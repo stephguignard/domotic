@@ -19,10 +19,14 @@
     "@angular/platform-browser": "^22.1.0",
     "@angular/router": "^22.1.0",
     "@openng/optimus-ui": "^2.0.2",
+    "@openng/optimus-ui-tailwindcss": "^2.0.2",
     "@openng/optimus-ui-themes": "^2.0.2",
+    "@tailwindcss/postcss": "^4.3.3",
     "chart.js": "^4.5.1",
+    "postcss": "^8.5.28",
     "primeicons": "^8.0.2",
     "rxjs": "~7.8.0",
+    "tailwindcss": "^4.3.3",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

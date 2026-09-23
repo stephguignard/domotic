@@ -2,19 +2,19 @@
 
 <p-toolbar styleClass="app-toolbar">
   <ng-template #start>
-    <span class="app-brand">
-      <i class="pi pi-home"></i>
-      <span>Domotic</span>
+    <span class="mr-8 inline-flex items-center gap-2 text-lg font-semibold">
+      <i class="pi pi-home text-primary"></i>
+      <span class="max-sm:hidden">Domotic</span>
     </span>
 
-    <nav class="app-nav">
+    <nav class="inline-flex gap-1">
       <a routerLink="/dashboard" routerLinkActive="active" class="app-nav-link">Tableau de bord</a>
       <a routerLink="/devices" routerLinkActive="active" class="app-nav-link">Équipements</a>
     </nav>
   </ng-template>
 
   <ng-template #end>
-    <div class="app-toolbar-end">
+    <div class="inline-flex items-center gap-3">
       <p-tag [value]="healthTag().label" [severity]="healthTag().severity" />
       <p-button
         icon="pi pi-refresh"
@@ -29,6 +29,6 @@
   </ng-template>
 </p-toolbar>
 
-<main class="app-main">
+<main class="mx-auto max-w-[90rem] p-6 max-sm:px-3 max-sm:py-4">
   <router-outlet />
 </main>

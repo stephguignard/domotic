@@ -13,7 +13,19 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withFetch()),
-    provideOptimus({ theme: { preset: Aura } }),
+    // cssLayer place les styles des composants Optimus dans une couche nommée,
+    // insérée entre `base` et `components` par styles.css. Sans cela, le
+    // preflight de Tailwind passerait après eux et écraserait leur mise en
+    // forme ; avec, les classes utilitaires restent prioritaires sur les
+    // composants, ce qui permet de les ajuster ponctuellement.
+    provideOptimus({
+      theme: {
+        preset: Aura,
+        options: {
+          cssLayer: { name: 'optimus', order: 'theme, base, optimus, components, utilities' },
+        },
+      },
+    }),
 
     // MessageService alimente le <p-toast> du composant racine. Fourni ici
     // plutôt que dans chaque composant, pour que tous partagent la même file.

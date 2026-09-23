@@ -28,7 +28,7 @@ interface Reading {
   selector: 'app-dashboard',
   imports: [RouterLink, CardModule, ButtonModule, TagModule, MessageModule, ProgressSpinnerModule],
   templateUrl: './dashboard.html',
-  styleUrl: './dashboard.scss',
+  styleUrl: './dashboard.css',
 })
 export class Dashboard {
   protected readonly store = inject(DevicesStore);

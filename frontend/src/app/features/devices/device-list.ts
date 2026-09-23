@@ -26,7 +26,7 @@ import { DevicesStore } from '../../core/devices.store';
     TooltipModule,
   ],
   templateUrl: './device-list.html',
-  styleUrl: './device-list.scss',
+  styleUrl: './device-list.css',
 })
 export class DeviceList {
   private readonly router = inject(Router);

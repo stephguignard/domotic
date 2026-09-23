@@ -11,7 +11,7 @@ import { DevicesStore } from './core/devices.store';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ToolbarModule, ButtonModule, TagModule, ToastModule],
   templateUrl: './app.html',
-  styleUrl: './app.scss',
+  styleUrl: './app.css',
 })
 export class App {
   protected readonly store = inject(DevicesStore);

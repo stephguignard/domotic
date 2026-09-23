@@ -1,0 +1,44 @@
+/* Le layout est écrit en classes Tailwind dans le template ; ne subsiste ici
+ * que ce qui s'exprime mal en utilitaires : les états d'un lien de navigation
+ * et les couleurs issues du thème Optimus, qui vivent dans des variables CSS
+ * plutôt que dans la palette Tailwind. */
+
+:host {
+  display: block;
+  min-height: 100vh;
+  background: var(--p-content-background);
+}
+
+/* La barre reste visible au défilement et s'étend d'un bord à l'autre :
+ * styleClass traverse jusqu'au composant Optimus, que les utilitaires du
+ * template n'atteindraient pas. */
+.app-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-radius: 0;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+}
+
+.app-nav-link {
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--p-content-border-radius);
+  color: var(--p-text-muted-color);
+  text-decoration: none;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+
+  &:hover {
+    background: var(--p-content-hover-background);
+    color: var(--p-text-color);
+  }
+
+  /* Posée par routerLinkActive sur la route courante. */
+  &.active {
+    background: var(--p-highlight-background);
+    color: var(--p-highlight-color);
+  }
+}
