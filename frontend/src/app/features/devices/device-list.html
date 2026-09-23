@@ -1,9 +1,9 @@
 <p-card>
   <ng-template #header>
-    <div class="list-header">
-      <h1>Équipements</h1>
+    <div class="flex flex-wrap items-center justify-between gap-4 px-5 pt-5">
+      <h1 class="text-xl font-semibold">Équipements</h1>
 
-      <div class="filters">
+      <div class="flex flex-wrap gap-3">
         <p-select
           [options]="sourceOptions"
           [ngModel]="sourceFilter()"
@@ -11,7 +11,7 @@
           optionLabel="label"
           optionValue="value"
           placeholder="Source"
-          styleClass="filter-select"
+          styleClass="min-w-48"
         />
         <p-select
           [options]="roomOptions()"
@@ -20,7 +20,7 @@
           optionLabel="label"
           optionValue="value"
           placeholder="Pièce"
-          styleClass="filter-select"
+          styleClass="min-w-48"
         />
       </div>
     </div>
@@ -45,15 +45,15 @@
         <th>Source</th>
         <th>État</th>
         <th>Mise à jour</th>
-        <th class="actions-col">Actions</th>
+        <th class="w-px whitespace-nowrap">Actions</th>
       </tr>
     </ng-template>
 
     <ng-template #body let-device>
-      <tr (click)="open(device)" class="device-row">
+      <tr (click)="open(device)" class="device-row cursor-pointer">
         <td>
-          <span class="device-name">
-            <i [class]="kindIcon(device.kind)"></i>
+          <span class="inline-flex items-center gap-2 font-medium">
+            <i [class]="kindIcon(device.kind)" class="text-primary"></i>
             <span>{{ device.name }}</span>
           </span>
         </td>
@@ -69,10 +69,12 @@
             <p-tag value="Hors ligne" severity="danger" />
           }
         </td>
-        <td class="timestamp">{{ device.updated_at | date: 'dd/MM HH:mm' }}</td>
-        <td class="actions-col">
+        <td class="whitespace-nowrap tabular-nums text-muted">
+          {{ device.updated_at | date: 'dd/MM HH:mm' }}
+        </td>
+        <td class="w-px whitespace-nowrap">
           @if (isControllable(device)) {
-            <div class="row-commands">
+            <div class="row-commands flex gap-1">
               @for (cmd of commandsFor(device.kind); track cmd.command) {
                 <p-button
                   [icon]="cmd.icon"
@@ -93,7 +95,9 @@
 
     <ng-template #emptymessage>
       <tr>
-        <td colspan="7" class="empty-row">Aucun équipement ne correspond aux filtres.</td>
+        <td colspan="7" class="p-8 text-center text-muted">
+          Aucun équipement ne correspond aux filtres.
+        </td>
       </tr>
     </ng-template>
   </p-table>

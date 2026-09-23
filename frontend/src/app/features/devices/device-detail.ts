@@ -36,7 +36,6 @@ import { DevicesStore } from '../../core/devices.store';
     ProgressSpinnerModule,
   ],
   templateUrl: './device-detail.html',
-  styleUrl: './device-detail.css',
 })
 export class DeviceDetail {
   /** Identifiant issu de la route, injecté par withComponentInputBinding(). */

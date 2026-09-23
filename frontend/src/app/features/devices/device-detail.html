@@ -3,12 +3,12 @@
 } @else if (device(); as d) {
   <p-card>
     <ng-template #header>
-      <div class="detail-header">
-        <div class="identity">
-          <i [class]="kindIcon(d.kind)"></i>
+      <div class="flex flex-wrap items-start justify-between gap-4 px-5 pt-5">
+        <div class="flex items-center gap-4">
+          <i [class]="kindIcon(d.kind)" class="text-3xl text-primary"></i>
           <div>
-            <h1>{{ d.name }}</h1>
-            <p class="subtitle">
+            <h1 class="text-[1.375rem] font-semibold">{{ d.name }}</h1>
+            <p class="mt-1 text-sm text-muted">
               {{ kindLabel(d.kind) }}
               @if (d.room) {
                 · {{ d.room }}
@@ -17,7 +17,7 @@
           </div>
         </div>
 
-        <div class="badges">
+        <div class="flex flex-wrap gap-2">
           <p-tag [value]="d.source" [severity]="d.source === 'netatmo' ? 'info' : 'success'" />
           @if (d.reachable) {
             <p-tag value="En ligne" severity="success" />
@@ -28,12 +28,12 @@
       </div>
     </ng-template>
 
-    <p class="updated">
+    <p class="text-sm text-muted">
       Dernière mise à jour : {{ d.updated_at | date: 'dd/MM/yyyy à HH:mm:ss' }}
     </p>
 
     @if (isControllable(d) && commandsFor(d.kind).length > 0) {
-      <div class="commands">
+      <div class="commands mt-4 flex flex-wrap gap-2">
         @for (cmd of commandsFor(d.kind); track cmd.command) {
           <p-button [label]="cmd.label" [icon]="cmd.icon" (onClick)="send(cmd.command)" />
         }
@@ -41,19 +41,21 @@
     }
   </p-card>
 
-  <div class="panels">
+  <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
     <p-card header="État courant">
       @if (readings().length > 0) {
-        <dl class="state-list">
+        <dl>
           @for (reading of readings(); track reading.metric) {
-            <div class="state-row">
-              <dt>{{ reading.label }}</dt>
-              <dd>{{ reading.value }}</dd>
+            <div
+              class="state-row flex items-baseline justify-between gap-4 border-b border-divider py-2.5 last:border-b-0"
+            >
+              <dt class="text-sm text-muted">{{ reading.label }}</dt>
+              <dd class="text-right font-medium tabular-nums">{{ reading.value }}</dd>
             </div>
           }
         </dl>
       } @else {
-        <p class="muted">Aucun état remonté pour cet équipement.</p>
+        <p class="text-sm text-muted">Aucun état remonté pour cet équipement.</p>
       }
     </p-card>
 
@@ -65,18 +67,18 @@
           (ngModelChange)="selectedMetric.set($event)"
           optionLabel="label"
           optionValue="value"
-          styleClass="metric-select"
+          styleClass="min-w-56"
         />
 
         @if (chartData(); as data) {
-          <div class="chart">
+          <div class="mt-4 h-80">
             <p-chart type="line" [data]="data" [options]="chartOptions" height="320px" />
           </div>
         } @else {
-          <p class="muted">Aucun relevé pour cette grandeur.</p>
+          <p class="text-sm text-muted">Aucun relevé pour cette grandeur.</p>
         }
       } @else {
-        <p class="muted">
+        <p class="text-sm text-muted">
           Aucun relevé enregistré sur les sept derniers jours. Les équipements pilotables
           (volets, portails) ne produisent pas de mesures.
         </p>
@@ -84,7 +86,7 @@
     </p-card>
   </div>
 } @else {
-  <div class="centered">
+  <div class="flex justify-center py-16">
     <p-progressSpinner ariaLabel="Chargement" />
   </div>
 }

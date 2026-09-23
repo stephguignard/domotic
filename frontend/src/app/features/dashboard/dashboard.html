@@ -1,15 +1,15 @@
 @if (store.loading() && store.devices().length === 0) {
-  <div class="centered">
+  <div class="flex justify-center py-16">
     <p-progressSpinner ariaLabel="Chargement" />
   </div>
 } @else if (store.error()) {
   <p-message severity="error" [text]="store.error()!" />
 } @else if (store.devices().length === 0) {
   <p-card>
-    <div class="empty">
-      <i class="pi pi-inbox"></i>
-      <h2>Aucun équipement</h2>
-      <p>
+    <div class="mx-auto max-w-lg px-4 py-8 text-center">
+      <i class="pi pi-inbox text-[2.5rem] text-muted"></i>
+      <h2 class="mt-4 mb-2 text-xl font-semibold">Aucun équipement</h2>
+      <p class="mb-6 text-muted">
         Aucune source n'a encore remonté d'équipement. Vérifiez la configuration
         des intégrations, puis connectez votre compte Netatmo si ce n'est pas fait.
       </p>
@@ -20,24 +20,30 @@
   </p-card>
 } @else {
   @if (store.unreachableCount() > 0) {
-    <p-message severity="warn" styleClass="full-width">
+    <p-message severity="warn" styleClass="mb-4 w-full">
       {{ store.unreachableCount() }} équipement(s) injoignable(s).
     </p-message>
   }
 
   @for (group of store.byRoom(); track group.room) {
-    <section class="room">
-      <h2 class="room-title">{{ group.room }}</h2>
+    <section class="mb-8">
+      <h2 class="room-title mb-3 text-base font-semibold tracking-wider uppercase text-muted">
+        {{ group.room }}
+      </h2>
 
-      <div class="device-grid">
+      <div class="grid gap-4 grid-cols-[repeat(auto-fill,minmax(17rem,1fr))]">
         @for (device of group.devices; track device.id) {
-          <a [routerLink]="['/devices', device.id]" class="device-link">
-            <p-card styleClass="device-card">
+          <a
+            [routerLink]="['/devices', device.id]"
+            class="block rounded-xl text-inherit no-underline transition-transform hover:-translate-y-0.5
+                   focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <p-card>
               <ng-template #header>
-                <div class="device-header">
-                  <span class="device-title">
-                    <i [class]="kindIcon(device.kind)"></i>
-                    <span>{{ device.name }}</span>
+                <div class="flex items-center justify-between gap-2 px-5 pt-4">
+                  <span class="inline-flex min-w-0 items-center gap-2 font-semibold">
+                    <i [class]="kindIcon(device.kind)" class="shrink-0 text-primary"></i>
+                    <span class="truncate">{{ device.name }}</span>
                   </span>
                   @if (!device.reachable) {
                     <p-tag value="Hors ligne" severity="danger" />
@@ -45,23 +51,23 @@
                 </div>
               </ng-template>
 
-              <p class="device-kind">{{ kindLabel(device.kind) }}</p>
+              <p class="mb-3 text-[0.8125rem] text-muted">{{ kindLabel(device.kind) }}</p>
 
               @if (readings(device).length > 0) {
-                <dl class="readings">
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-3">
                   @for (reading of readings(device); track reading.label) {
-                    <div class="reading">
-                      <dt>{{ reading.label }}</dt>
-                      <dd>{{ reading.value }}</dd>
+                    <div class="reading min-w-0">
+                      <dt class="truncate text-xs text-muted">{{ reading.label }}</dt>
+                      <dd class="mt-0.5 text-lg tabular-nums">{{ reading.value }}</dd>
                     </div>
                   }
                 </dl>
               } @else {
-                <p class="no-reading">Aucune mesure</p>
+                <p class="text-[0.8125rem] italic text-muted">Aucune mesure</p>
               }
 
               @if (isControllable(device) && commandsFor(device.kind).length > 0) {
-                <div class="commands">
+                <div class="commands mt-4 flex flex-wrap gap-2 border-t border-divider pt-4">
                   @for (cmd of commandsFor(device.kind); track cmd.command) {
                     <p-button
                       [label]="cmd.label"

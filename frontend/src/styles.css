@@ -15,6 +15,26 @@
  * suivent le thème actif au lieu de la palette Tailwind par défaut. */
 @import '@openng/optimus-ui-tailwindcss';
 
+/* Le plugin ne mappe que les palettes `primary` et `surface`. Les autres
+ * couleurs du thème vivent dans des variables `--p-*` qu'aucun utilitaire
+ * n'atteint : les déclarer ici les transforme en classes ordinaires
+ * (`text-muted`, `bg-content`, `border-divider`), ce qui évite de semer des
+ * valeurs arbitraires dans les templates.
+ *
+ * `inline` fait pointer l'utilitaire sur la variable plutôt que sur sa valeur :
+ * le basculement clair/sombre du thème reste donc automatique. */
+@theme inline {
+  --color-content: var(--p-content-background);
+  --color-content-hover: var(--p-content-hover-background);
+  --color-divider: var(--p-content-border-color);
+  --color-body: var(--p-text-color);
+  --color-muted: var(--p-text-muted-color);
+  --color-highlight: var(--p-highlight-background);
+  --color-on-highlight: var(--p-highlight-color);
+
+  --radius-content: var(--p-content-border-radius);
+}
+
 /* Icônes utilisées par Optimus UI (classes `pi pi-*`), héritées de PrimeNG. */
 @import 'primeicons/primeicons.css';
 
