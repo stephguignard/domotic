@@ -199,6 +199,33 @@ En revanche, une configuration **partiellement** renseignée fait échouer le d�
 c'est presque toujours une faute de frappe, et une intégration silencieusement
 inactive coûte plus cher à diagnostiquer qu'un refus net.
 
+## Travail en branches
+
+Ne plus committer directement sur `main`. Toute modification part d'une branche, et
+revient par une pull request :
+
+```bash
+git checkout main && git pull
+git checkout -b <type>/<sujet>        # feat/pieces-tahoma, fix/listener-expire…
+# … travail, commits …
+git push -u origin <type>/<sujet>
+gh pr create --fill
+```
+
+Le `<type>` reprend ceux des messages de commit (`feat`, `fix`, `docs`, `refactor`,
+`chore`…) ; le sujet est court, en minuscules, mots séparés par des tirets.
+
+`gh` est installé dans `~/.local/bin` (hors paquets système, sudo demandant un mot de
+passe sur cette machine). Commandes utiles : `gh pr create --fill`, `gh pr list`,
+`gh pr view --web`, `gh pr checks`, `gh pr merge --squash`.
+
+**Fusion.** Préférer un fast-forward tant que `main` n'a pas divergé : l'historique du
+dépôt est linéaire et le rester facilite la lecture et les `git bisect`. Supprimer la
+branche une fois fusionnée.
+
+**Ne jamais committer ni pousser sans demande explicite.** Un commit couvre un
+changement cohérent ; ne pas y mêler une correction sans rapport.
+
 ## Mémoire de projet
 
 Le contexte long vit dans `.memory-bank/domotic/` (memory-bank façon Cline) :

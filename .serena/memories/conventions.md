@@ -6,6 +6,12 @@
 - Commits : phrase au présent de l'indicatif, 3e personne, sans préfixe
   (« Écarte l'infrastructure de la passerelle TaHoma »).
 
+## Git
+- Jamais de commit direct sur `main` : branche `<type>/<sujet>` puis PR
+  (`gh pr create --fill`). `gh` vit dans `~/.local/bin`.
+- Fusion en fast-forward tant que `main` n'a pas divergé ; branche supprimée ensuite.
+- Ne jamais committer ni pousser sans demande explicite.
+
 ## Go
 - Erreurs enveloppées en français : `fmt.Errorf("configuration de goose: %w", err)`.
 - Logs via `log/slog`.
