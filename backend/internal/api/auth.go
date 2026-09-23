@@ -99,11 +99,11 @@ func (h *authHandler) status(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if h.deps.Netatmo.Authenticated(r.Context()) {
 		//nolint:errcheck // réponse courte, une écriture partielle n'appelle aucun traitement
-		w.Write([]byte(`{"authenticated":true}`))
+		w.Write([]byte(`{"configured":true,"authenticated":true}`))
 		return
 	}
 	//nolint:errcheck // idem
-	w.Write([]byte(`{"authenticated":false,"authorize_url":"/auth/netatmo"}`))
+	w.Write([]byte(`{"configured":true,"authenticated":false,"authorize_url":"/auth/netatmo"}`))
 }
 
 // randomState produit un state OAuth2 imprévisible.
@@ -113,4 +113,35 @@ func randomState() (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// unconfigured répond aux routes OAuth2 quand l'intégration Netatmo n'a pas
+// d'identifiants. Une page explicite vaut mieux qu'un renvoi silencieux vers
+// l'application, qui donnerait l'impression d'un lien cassé.
+func unconfigured(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	//nolint:errcheck // page statique : une écriture partielle n'appelle aucun traitement
+	w.Write([]byte(`<!doctype html><html lang="fr"><meta charset="utf-8">
+<title>Netatmo non configuré</title>
+<body style="font-family:system-ui;max-width:34rem;margin:4rem auto;line-height:1.6">
+<h1>Netatmo non configuré</h1>
+<p>Le service n'a pas d'identifiants Netatmo : l'intégration est inactive.</p>
+<ol>
+  <li>Créer une application sur <a href="https://dev.netatmo.com/apps/">dev.netatmo.com</a>.</li>
+  <li>Y déclarer l'URL de redirection affichée par le service au démarrage,
+      au caractère près.</li>
+  <li>Renseigner <code>NETATMO_CLIENT_ID</code> et <code>NETATMO_CLIENT_SECRET</code>
+      dans <code>.env</code>, puis redémarrer.</li>
+</ol>
+<p><a href="/">Retour à l'application</a></p>
+</body></html>`))
+}
+
+// unconfiguredStatus conserve le contrat JSON de /auth/netatmo/status, pour que
+// le frontend distingue « non configuré » de « configuré mais pas authentifié ».
+func unconfiguredStatus(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	//nolint:errcheck // réponse courte, une écriture partielle n'appelle aucun traitement
+	w.Write([]byte(`{"configured":false,"authenticated":false}`))
 }

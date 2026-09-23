@@ -51,6 +51,13 @@ func Register(api huma.API, d Deps) {
 // exploiter, et ne sont parcourues qu'une fois à la configuration initiale.
 func RegisterAuthRoutes(mux *http.ServeMux, d Deps) {
 	if d.Netatmo == nil {
+		// Enregistrer malgré tout : sans ces routes, le handler du frontend
+		// attrape /auth/netatmo et sert l'application. L'utilisateur qui clique
+		// « Connecter Netatmo » retombe alors sur le tableau de bord, ce qui
+		// ressemble à une panne plutôt qu'à une intégration non configurée.
+		mux.HandleFunc("GET /auth/netatmo", unconfigured)
+		mux.HandleFunc("GET /auth/netatmo/callback", unconfigured)
+		mux.HandleFunc("GET /auth/netatmo/status", unconfiguredStatus)
 		return
 	}
 	h := &authHandler{deps: d}
