@@ -1,16 +1,21 @@
 # Conventions
 
 ## Langue
-- Code commenté, logs, erreurs, commits : **français**.
+- Code commenté, logs, erreurs : **français**.
 - Identifiants, tags OpenAPI, champs JSON : anglais.
-- Commits : phrase au présent de l'indicatif, 3e personne, sans préfixe
-  (« Écarte l'infrastructure de la passerelle TaHoma »).
+- Commits : **Conventional Commits en anglais** (`<type>(<scope>): <description>`,
+  impératif présent), cf. `.claude/rules/conventional-commits.md`. Les douze premiers
+  commits précèdent la règle (sujets français sans préfixe) ; ne pas réécrire.
+  Scopes du projet : `tahoma`, `netatmo`, `store`, `api`, `frontend`, `memory-bank`,
+  `deps`, `tooling` — ceux du fichier de règles viennent d'un autre projet.
 
 ## Git
 - Jamais de commit direct sur `main` : branche `<type>/<sujet>` puis PR
   (`gh pr create --fill`). `gh` vit dans `~/.local/bin`.
 - Fusion en fast-forward tant que `main` n'a pas divergé ; branche supprimée ensuite.
 - Ne jamais committer ni pousser sans demande explicite.
+- `gh` authentifié sur `stephguignard`, protocole retenu `https` (remote en SSH ;
+  sans effet sur les PR). `gh auth login` sans stdin prend les valeurs par défaut.
 
 ## Go
 - Erreurs enveloppées en français : `fmt.Errorf("configuration de goose: %w", err)`.

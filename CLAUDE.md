@@ -226,6 +226,16 @@ branche une fois fusionnée.
 **Ne jamais committer ni pousser sans demande explicite.** Un commit couvre un
 changement cohérent ; ne pas y mêler une correction sans rapport.
 
+**Messages de commit.** Suivre `.claude/rules/conventional-commits.md` :
+`<type>(<scope>): <description>`, en anglais, à l'impératif présent. Les douze
+premiers commits du dépôt précèdent cette règle et gardent leurs sujets français sans
+préfixe ; l'historique n'est pas réécrit. Les scopes listés dans ce fichier viennent
+d'un autre projet — employer ceux d'ici (`tahoma`, `netatmo`, `store`, `api`,
+`frontend`, `memory-bank`, `deps`, `tooling`) ou aucun si le changement est transverse.
+
+> **Point ouvert** (`.memory-bank/domotic/decisions.md` #13) : la PR #1 a été fusionnée
+> avec un merge commit, et non en fast-forward comme prescrit ci-dessus.
+
 ## Mémoire de projet
 
 Le contexte long vit dans `.memory-bank/domotic/` (memory-bank façon Cline) :
@@ -244,5 +254,8 @@ git-ignoré car il contient des chemins propres à la machine.
 
 ## Langue
 
-Code, commentaires, messages de log, d'erreur et de commit sont en **français**. Les
-identifiants de code, les tags OpenAPI et les noms de champs JSON restent en anglais.
+Code, commentaires, messages de log et d'erreur sont en **français**. Les identifiants
+de code, les tags OpenAPI et les noms de champs JSON restent en anglais.
+
+**Exception : les messages de commit sont en anglais** depuis l'adoption de
+Conventional Commits (voir « Travail en branches »).
