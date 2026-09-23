@@ -5,7 +5,25 @@ import (
 	"time"
 )
 
+// isolate neutralise toutes les variables du service, pour que ces tests ne
+// dépendent pas de l'environnement de la machine. Le Makefile charge .env :
+// sans cette isolation, une configuration réelle ferait échouer les cas qui
+// attendent une configuration vide ou partielle.
+//
+// Une valeur vide équivaut à une variable absente pour le package config.
+func isolate(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{
+		"DOMOTIC_PORT", "DOMOTIC_DB_PATH", "DOMOTIC_PUBLIC_URL",
+		"NETATMO_CLIENT_ID", "NETATMO_CLIENT_SECRET", "NETATMO_SCOPES", "NETATMO_POLL_INTERVAL",
+		"TAHOMA_HOST", "TAHOMA_PORT", "TAHOMA_PIN", "TAHOMA_TOKEN", "TAHOMA_EVENT_INTERVAL",
+	} {
+		t.Setenv(key, "")
+	}
+}
+
 func TestLoadDefaults(t *testing.T) {
+	isolate(t)
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -25,6 +43,7 @@ func TestLoadDefaults(t *testing.T) {
 }
 
 func TestLoadRejectsPartialNetatmoConfig(t *testing.T) {
+	isolate(t)
 	// Une configuration à moitié renseignée est presque toujours une faute de
 	// frappe : mieux vaut refuser de démarrer qu'ignorer l'intégration.
 	t.Setenv("NETATMO_CLIENT_ID", "abc")
@@ -35,6 +54,7 @@ func TestLoadRejectsPartialNetatmoConfig(t *testing.T) {
 }
 
 func TestLoadRejectsPartialTahomaConfig(t *testing.T) {
+	isolate(t)
 	t.Setenv("TAHOMA_HOST", "192.168.1.42")
 	t.Setenv("TAHOMA_PIN", "1234-5678-9012")
 	// TAHOMA_TOKEN manquant
@@ -45,6 +65,7 @@ func TestLoadRejectsPartialTahomaConfig(t *testing.T) {
 }
 
 func TestLoadAcceptsCompleteConfig(t *testing.T) {
+	isolate(t)
 	t.Setenv("NETATMO_CLIENT_ID", "id")
 	t.Setenv("NETATMO_CLIENT_SECRET", "secret")
 	t.Setenv("TAHOMA_HOST", "192.168.1.42")
@@ -68,6 +89,7 @@ func TestLoadAcceptsCompleteConfig(t *testing.T) {
 }
 
 func TestLoadRejectsTooFrequentPolling(t *testing.T) {
+	isolate(t)
 	t.Setenv("NETATMO_CLIENT_ID", "id")
 	t.Setenv("NETATMO_CLIENT_SECRET", "secret")
 	t.Setenv("NETATMO_POLL_INTERVAL", "10s")
@@ -78,6 +100,7 @@ func TestLoadRejectsTooFrequentPolling(t *testing.T) {
 }
 
 func TestLoadRejectsTooFrequentEventFetch(t *testing.T) {
+	isolate(t)
 	t.Setenv("TAHOMA_HOST", "192.168.1.42")
 	t.Setenv("TAHOMA_PIN", "1234-5678-9012")
 	t.Setenv("TAHOMA_TOKEN", "token")
@@ -90,6 +113,7 @@ func TestLoadRejectsTooFrequentEventFetch(t *testing.T) {
 }
 
 func TestInvalidDurationFallsBackToDefault(t *testing.T) {
+	isolate(t)
 	t.Setenv("NETATMO_CLIENT_ID", "id")
 	t.Setenv("NETATMO_CLIENT_SECRET", "secret")
 	t.Setenv("NETATMO_POLL_INTERVAL", "pas-une-durée")
