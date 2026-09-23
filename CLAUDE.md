@@ -52,6 +52,17 @@ Angular 22 utilise **Vitest**, pas Karma : `--browsers=ChromeHeadless` n'existe 
 et `--filter` prend une expression régulière testée contre les noms de suites et de
 tests.
 
+Les tests tournent dans **jsdom**, qui n'implémente pas Canvas. `src/test-setup.ts`
+stube `getContext()` : sans lui, chaque rendu du composant de détail pollue la sortie
+et Chart.js échoue silencieusement. Les specs vérifient donc les **données** du
+graphique (`chartData()`), jamais son rendu — cela demanderait le mode navigateur,
+via `@vitest/browser-playwright`.
+
+`src/app/testing/providers.ts` regroupe les providers communs et des fabriques
+d'équipements. Les specs de composants utilisent le **vrai** `DevicesStore` et
+interceptent les requêtes HTTP plutôt que de simuler le store : ce qui est vérifié
+est alors le comportement réel, du décodage de la réponse jusqu'au rendu.
+
 ## Architecture
 
 ### Le frontend ne parle jamais aux API amont
