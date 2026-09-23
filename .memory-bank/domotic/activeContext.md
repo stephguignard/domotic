@@ -4,13 +4,9 @@ _Dernière mise à jour : 2026-09-23 (clôture de la session d'intégration TaHo
 
 ## Branche courante
 
-**`chore/memoire-projet`**, HEAD `85b8120`, synchronisée avec son homologue distante.
-Arbre propre.
-
-`main` est restée à `526e3fe` (« Écrit les styles en classes Tailwind ») : la branche
-courante la précède de deux commits, tous deux consacrés à la mémoire de projet
-(Serena + memory-bank, puis cette clôture de session). **Fusion dans `main` à
-faire.**
+`main`, arbre propre. `chore/memoire-projet` y a été fusionnée en fast-forward
+(mémoire de projet : Serena, memory-bank, clôture de session) ; l'historique reste
+linéaire et la branche peut être supprimée.
 
 ## Récemment fait
 
