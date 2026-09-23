@@ -172,6 +172,22 @@ En revanche, une configuration **partiellement** renseignée fait échouer le d�
 c'est presque toujours une faute de frappe, et une intégration silencieusement
 inactive coûte plus cher à diagnostiquer qu'un refus net.
 
+## Mémoire de projet
+
+Le contexte long vit dans `.memory-bank/domotic/` (memory-bank façon Cline) :
+`projectbrief`, `productContext`, `systemPatterns`, `techContext`, `activeContext`,
+`progress`, plus `journal.md` (journal daté, entrée la plus récente en haut, jamais
+réécrit) et `decisions.md` (décisions façon ADR). Les notes d'agent denses vivent
+dans `.serena/memories/`, avec `core` pour point d'entrée.
+
+`/hello` charge cette mémoire en début de session ; `/bye` met à jour
+`activeContext` / `progress`, ajoute une entrée au journal et consigne les choix
+structurants dans `decisions.md`. Ce fichier reste la référence des règles : la
+mémoire ne doit pas le contredire.
+
+Les serveurs MCP `serena` et `memory-bank` sont déclarés dans `.mcp.json`,
+git-ignoré car il contient des chemins propres à la machine.
+
 ## Langue
 
 Code, commentaires, messages de log, d'erreur et de commit sont en **français**. Les

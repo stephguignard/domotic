@@ -30,3 +30,6 @@
 /.idea/
 /.vscode/
 *.iml
+
+# Configuration MCP locale (chemins absolus propres à la machine)
+/.mcp.json
