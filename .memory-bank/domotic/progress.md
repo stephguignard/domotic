@@ -1,6 +1,7 @@
 # Progress — domotic
 
-_Dernier état connu : 2026-09-23, relancé à la clôture de session (HEAD `714d664`)._
+_Dernier état connu : 2026-09-23, mesuré à la clôture précédente (HEAD `714d664`)._
+_Inchangé depuis : la session suivante n'a touché qu'à l'outillage Git._
 
 ## Build / tests
 
@@ -23,6 +24,7 @@ _Dernier état connu : 2026-09-23, relancé à la clôture de session (HEAD `714
 | Frontend (dashboard, liste, détail) | ✅ testé (Vitest), rendu vérifié par capture |
 | Docker (image, volume, accès LAN) | ✅ éprouvé en local |
 | Déploiement NAS | 🟡 chaîne prête (`make deploy`), jamais exécutée sur le NAS |
+| Outillage Git | ✅ `gh` installé et authentifié, flux branches + PR en place |
 
 ## Problèmes connus
 
@@ -32,3 +34,4 @@ _Dernier état connu : 2026-09-23, relancé à la clôture de session (HEAD `714
   Une commande acceptée ne prouve pas que le volet a bougé.
 - L'arrêt de `make dev` par signal laisse `ng serve` orphelin (`Ctrl+C` le tue bien).
 - Image Docker en retard d'un build : contient le frontend d'avant Tailwind.
+- Deux conventions de commit coexistent dans le dépôt (voir `decisions.md` #14).

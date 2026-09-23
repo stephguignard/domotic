@@ -127,3 +127,60 @@ préserve le basculement clair/sombre. L'ordre `theme, base, optimus, components
 utilities` et l'option `cssLayer` de `provideOptimus` doivent rester cohérents,
 sinon le preflight de Tailwind écrase les composants.
 
+---
+
+## 13. Travail en branches et pull requests
+_Statut : accepted_
+
+**Contexte.** Les douze premiers commits ont été poussés directement sur `main`.
+`gh` a été installé pour ouvrir des PR.
+**Décision.** Toute modification part d'une branche `<type>/<sujet>` et revient par
+une pull request. `gh` vit dans `~/.local/bin` : `sudo` réclame un mot de passe sur
+cette machine, le paquet système n'était pas une option.
+**Conséquences.** `CLAUDE.md` gagne une section « Travail en branches ». La règle y
+prescrit un fast-forward tant que `main` n'a pas divergé, afin de garder l'historique
+linéaire — **mais la PR #1 a été fusionnée avec un merge commit**, ce qui l'a
+contredite dès son premier usage. Stratégie à trancher : ajuster la règle, ou régler
+GitHub pour n'autoriser que le fast-forward.
+
+---
+
+## 14. Deux conventions de commit coexistent
+_Statut : superseded by #15_
+
+**Contexte.** `.claude/rules/conventional-commits.md` a été versionné tel quel, à la
+demande. Il impose Conventional Commits : `feat(scope): add …`, en anglais, à
+l'impératif. `CLAUDE.md` et `.serena/memories/conventions.md` imposent l'inverse :
+une phrase française au présent, sans préfixe — ce que suivent les douze premiers
+commits, le treizième (`docs: add the branch-and-PR workflow…`) étant le premier
+écart.
+
+Le fichier importé porte des traces de son projet d'origine (`angular-state-example`,
+cité par le journal comme modèle d'organisation) : ses scopes sont `todo`, `user`,
+`invoice`, `dynform`, `cva`, `formly`, et il attribue les commits à Sonnet 5.
+
+**Décision.** Aucune pour l'instant : les deux règles coexistent, la contradiction est
+documentée ici et dans la PR #1 plutôt que résolue à la hâte.
+**Conséquences.** Trois issues possibles — adopter Conventional Commits en adaptant
+les scopes au projet (`tahoma`, `netatmo`, `store`, `api`, `frontend`, `memory-bank`),
+revenir au français sans préfixe et retirer le fichier, ou un compromis (type préfixé,
+description française). Tant que rien n'est tranché, préciser la convention voulue
+avant de demander un commit.
+
+---
+
+## 15. Conventional Commits pour les nouveaux messages
+_Statut : accepted — tranche #14_
+
+**Contexte.** #14 laissait coexister deux conventions. L'arbitrage a été rendu.
+**Décision.** Les nouveaux messages suivent `.claude/rules/conventional-commits.md` :
+`<type>(<scope>): <description>`, en anglais, à l'impératif présent. Le fichier de
+règles reste inchangé, scopes hérités compris.
+**Conséquences.** `CLAUDE.md` ne réclame plus le français pour les messages de commit
+— le reste (code, commentaires, logs, erreurs) y demeure en français. **L'historique
+antérieur n'est pas réécrit** : les douze premiers commits gardent leurs sujets
+français sans préfixe, et la rupture se lit à partir de `81b9927`. Les scopes du
+fichier appartiennent encore à `angular-state-example` ; employer ceux du projet
+(`tahoma`, `netatmo`, `store`, `api`, `frontend`, `memory-bank`, `deps`, `tooling`)
+ou omettre le scope si le changement est transverse.
+

@@ -15,6 +15,24 @@ Next: …
 
 ---
 
+## 2026-09-23 — Flux branches + pull requests
+Done: `gh` 2.101.0 installé dans `~/.local/bin` et authentifié (device flow, compte
+`stephguignard`). Section « Travail en branches » ajoutée à `CLAUDE.md` et à la
+mémoire Serena. `.claude/rules/conventional-commits.md` versionné tel quel. PR #1
+créée puis fusionnée — première du dépôt. Branches `chore/memoire-projet` et
+`docs/convention` supprimées en local et sur GitHub.
+Decided: plus de commit direct sur `main` ; une branche `<type>/<sujet>` puis une PR.
+Le fichier de règles reste inchangé sur demande, malgré ses scopes hérités d'un autre
+projet.
+Observed: le fichier de règles **contredit** `CLAUDE.md` et Serena sur la convention
+de commit (anglais préfixé vs français sans préfixe) — contradiction consignée dans la
+PR #1 plutôt que masquée. La PR a été fusionnée avec un merge commit alors que
+`CLAUDE.md` prescrit le fast-forward : premier écart à la règle qu'elle venait de
+poser. `gh auth login` lancé sans entrée standard prend les valeurs par défaut, d'où
+un protocole `https` retenu là où le remote est en SSH.
+Next: trancher la convention de commit et la stratégie de fusion ; connecter Netatmo ;
+`make docker` avant tout déploiement.
+
 ## 2026-09-23 — Intégration TaHoma validée sur matériel réel
 Done: box branchée (IP fixe, mode développeur), quatre volets remontés, commande
 `close` exécutée — le volet du salon s'est physiquement fermé. Passerelles internes

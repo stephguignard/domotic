@@ -1,37 +1,38 @@
 # Active Context — domotic
 
-_Dernière mise à jour : 2026-09-23 (clôture de la session d'intégration TaHoma)_
+_Dernière mise à jour : 2026-09-23 (mise en place du flux branches + PR)_
 
 ## Branche courante
 
-`main`, arbre propre. `chore/memoire-projet` y a été fusionnée en fast-forward
-(mémoire de projet : Serena, memory-bank, clôture de session) ; l'historique reste
-linéaire et la branche peut être supprimée.
+`main`, HEAD `104d081`, alignée sur `origin/main`. Arbre propre. **Seule branche du
+dépôt** : `chore/memoire-projet` et `docs/convention` ont été fusionnées puis
+supprimées, en local comme sur GitHub.
 
 ## Récemment fait
 
-- **TaHoma validé en réel** : box à l'IP fixe, quatre volets remontés, une commande
-  `close` a physiquement fermé un volet. Chaîne complète éprouvée, TLS compris.
-- Passerelles internes écartées sur le `controllableName` (11 équipements → 4) +
-  migration `0002` pour purger les lignes déjà enregistrées.
-- `.env` désormais chargé par le Makefile ; deux tests de config qui dépendaient de
-  l'environnement ont dû être isolés.
-- Absence de configuration Netatmo expliquée par une page dédiée (503) au lieu de
-  retomber silencieusement sur l'application.
-- SCSS → CSS + Tailwind 4, puis styles réécrits en classes utilitaires : 400 lignes
-  de CSS ramenées à 92, plus aucun `::ng-deep`.
-- **Docker éprouvé en local** : image 17,5 Mo, 6,8 Mo de RAM au repos, et le
-  conteneur atteint la box sur le LAN par le bridge par défaut.
-- Serena + memory-bank, commandes `/hello` et `/bye`.
+- **Flux branches + PR adopté** : plus de commit direct sur `main`. Branche
+  `<type>/<sujet>`, puis pull request. Consigné dans `CLAUDE.md` et la mémoire Serena.
+- `gh` 2.101.0 installé dans `~/.local/bin` (sudo réclame un mot de passe ici) et
+  authentifié sur le compte `stephguignard` — portées `repo`, `read:org`, `gist`.
+- **PR #1 créée et fusionnée**, première du dépôt.
+- `.claude/rules/conventional-commits.md` versionné **tel quel**, sans adaptation.
+- **Conventional Commits adopté** (décision #15) : les nouveaux messages sont en
+  anglais préfixés ; l'historique antérieur n'est pas réécrit. Le fichier de règles
+  garde les scopes d'`angular-state-example` — employer ceux du projet.
+
+Côté applicatif, rien n'a bougé depuis la clôture précédente : TaHoma validé en réel,
+passerelles internes écartées, Tailwind en place, Docker éprouvé.
 
 ## Décisions ouvertes
 
+- **Stratégie de fusion** — `CLAUDE.md` prescrit le fast-forward, mais la PR #1 a été
+  fusionnée avec un merge commit. Soit la règle change, soit le réglage GitHub.
 - Pièces TaHoma : l'API locale n'en fournit aucune → groupement par type, ou mapping
   manuel en configuration ? Rien n'est engagé.
 - Retour d'état des volets RTS : récepteur ESP32 + CC1101 exposant du MQTT (idée
   seulement).
-- Robustesse de l'arrêt de `make dev` : le `trap` ne tue pas `ng serve` quand
-  l'arrêt vient d'un signal plutôt que d'un `Ctrl+C`.
+- Robustesse de l'arrêt de `make dev` : le `trap` ne tue pas `ng serve` quand l'arrêt
+  vient d'un signal plutôt que d'un `Ctrl+C`.
 
 ## Attention
 
@@ -42,3 +43,5 @@ linéaire et la branche peut être supprimée.
 - L'image Docker construite contient encore le frontend d'avant Tailwind :
   `make docker` avant tout déploiement.
 - `make dev` et le conteneur se disputent le port 8080 : n'en lancer qu'un.
+- `gh` a retenu **HTTPS** alors que le remote est en SSH ; sans effet sur les PR,
+  `gh config set git_protocol ssh` pour aligner.
