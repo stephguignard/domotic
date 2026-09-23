@@ -111,6 +111,28 @@ func statesToMap(states []State) map[string]any {
 	return out
 }
 
+// isInfrastructure reconnaît les composants d'infrastructure de la passerelle :
+// la box elle-même, ses interfaces réseau, et les ponts ou émetteurs-récepteurs
+// par lesquels transitent les autres protocoles. La box les expose dans /setup
+// au même titre que les équipements, mais ils ne se pilotent pas et n'ont rien
+// à faire dans une interface domestique.
+//
+// Le critère porte sur le controllableName plutôt que sur le préfixe de
+// protocole du deviceURL : filtrer tout « zigbee:// » écarterait aussi les
+// vrais équipements Zigbee le jour où l'un sera appairé, alors que seul le
+// coordinateur porte un Transceiver.
+func isInfrastructure(controllableName string) bool {
+	n := strings.ToLower(controllableName)
+
+	// internal: ne contient que les composants propres à la passerelle
+	// (PodV3Component, WifiComponent).
+	if strings.HasPrefix(n, "internal:") {
+		return true
+	}
+
+	return strings.HasSuffix(n, ":bridge") || strings.Contains(n, "transceiver")
+}
+
 // kindForControllable déduit un type d'équipement unifié depuis le
 // controllableName Overkiz, de la forme "io:RollerShutterGenericIOComponent".
 func kindForControllable(name string) string {

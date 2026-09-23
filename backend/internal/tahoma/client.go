@@ -148,6 +148,13 @@ func (c *Client) FetchDevices(ctx context.Context) ([]store.Device, error) {
 	devices := make([]store.Device, 0, len(setup.Devices))
 
 	for _, d := range setup.Devices {
+		// La passerelle s'expose elle-même, avec ses interfaces réseau et ses
+		// ponts de protocole. Les écarter ici évite de les propager jusqu'à la
+		// base et à l'interface.
+		if isInfrastructure(d.ControllableName) {
+			continue
+		}
+
 		state, err := json.Marshal(statesToMap(d.States))
 		if err != nil {
 			return nil, fmt.Errorf("sérialisation de l'état de %s: %w", d.DeviceURL, err)
