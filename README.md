@@ -125,6 +125,30 @@ L'API locale évite le cloud Somfy et répond en quelques millisecondes.
 3. Réserver un bail DHCP fixe à la box, puis renseigner `TAHOMA_HOST` avec son
    **adresse IP**, `TAHOMA_PIN` et `TAHOMA_TOKEN`.
 
+Les trois variables doivent être renseignées **ensemble** : une configuration
+partielle fait volontairement échouer le démarrage.
+
+Le PIN se lit dans le certificat que la box présente, sans ouvrir l'application :
+
+```bash
+openssl s_client -connect <ip-de-la-box>:443 </dev/null 2>/dev/null \
+  | openssl x509 -noout -subject
+# subject=O = Overkiz, OU = Overkiz Device Server, CN = 1234-5678-9012.local
+```
+
+La même commande vérifie la chaîne TLS contre la CA embarquée, ce qui permet de
+valider la connexion avant même d'avoir un jeton :
+
+```bash
+openssl s_client -connect <ip>:443 -servername gateway-<pin>.local \
+  -CAfile backend/internal/tahoma/overkiz-root-ca-2048.crt \
+  -verify_hostname gateway-<pin>.local </dev/null 2>&1 | grep 'Verify return code'
+```
+
+> **Le port 8443 fermé alors que le 443 répond** signifie que le mode
+> développeur n'est pas activé. Il peut aussi se refermer si le serveur NTP
+> distribué par le DHCP est invalide.
+
 L'IP plutôt que `gateway-<pin>.local` : la résolution mDNS depuis un conteneur
 Docker sur Synology est peu fiable. Le certificat de la box étant émis pour son
 nom `.local`, le client se connecte à l'IP tout en validant ce nom, avec la CA
