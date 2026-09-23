@@ -23,6 +23,14 @@ NAS_DIR  ?= /volume1/docker/domotic
 # Go est installé dans ~/.local/go, hors du PATH par défaut.
 export PATH := $(HOME)/.local/go/bin:$(PATH)
 
+# docker-compose lit .env nativement, mais pas make : sans cela, les
+# identifiants des intégrations resteraient invisibles en développement.
+# Seules les clés réellement présentes dans le fichier sont exportées.
+ifneq (,$(wildcard .env))
+-include .env
+export $(shell sed -n 's/^\([A-Z_][A-Z0-9_]*\)=.*/\1/p' .env)
+endif
+
 .PHONY: help
 help: ## Afficher cette aide
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
