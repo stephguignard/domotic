@@ -4,8 +4,13 @@ _Dernière mise à jour : 2026-09-23 (clôture de la session d'intégration TaHo
 
 ## Branche courante
 
-`main`, HEAD `714d664` (« Ajoute Serena et un memory-bank pour la mémoire de projet »),
-synchronisée avec `origin/main`. Arbre propre, rien en cours ailleurs.
+**`chore/memoire-projet`**, HEAD `85b8120`, synchronisée avec son homologue distante.
+Arbre propre.
+
+`main` est restée à `526e3fe` (« Écrit les styles en classes Tailwind ») : la branche
+courante la précède de deux commits, tous deux consacrés à la mémoire de projet
+(Serena + memory-bank, puis cette clôture de session). **Fusion dans `main` à
+faire.**
 
 ## Récemment fait
 
