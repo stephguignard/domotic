@@ -61,6 +61,44 @@ sont simplement inactives, ce qui permet de les ajouter une par une.
 | http://localhost:8080/docs | documentation interactive de l'API |
 | http://localhost:8080/api/health | état du service et de ses sources |
 
+Travailler sur `:4200` plutôt que sur `:8080` : le dev-server Angular apporte le
+rechargement à chaud et relaie `/api`, `/auth` et `/docs` vers le backend.
+
+### Chaque partie séparément
+
+`make dev` lance les deux processus en parallèle et les arrête ensemble. Pour
+isoler les logs d'un côté, deux terminaux :
+
+```bash
+make dev-backend     # backend seul sur :8080, logs en mode debug
+make dev-frontend    # frontend seul sur :4200
+```
+
+Les équivalents directs, quand il faut passer des options :
+
+```bash
+cd backend  && go run ./cmd/domotic --debug    # --help pour les options
+cd frontend && npx ng serve --port 4300
+```
+
+> `go` n'est pas dans le `PATH` par défaut — il est installé dans `~/.local/go` :
+> `export PATH=$HOME/.local/go/bin:$PATH`. Le `Makefile` s'en charge, pas un `cd`
+> manuel.
+
+### Tester la version compilée
+
+```bash
+make build     # compile le frontend et l'embarque dans le binaire
+./domotic      # tout sur :8080, un seul processus
+```
+
+C'est la forme déployée sur le NAS : le binaire sert lui-même l'interface, il n'y
+a plus de `:4200`. La configuration passe alors par l'environnement :
+
+```bash
+DOMOTIC_PORT=9000 DOMOTIC_DB_PATH=./data/test.db ./domotic
+```
+
 ## Configuration des intégrations
 
 ### Netatmo
@@ -94,16 +132,33 @@ Overkiz embarquée dans le binaire — sans jamais désactiver la vérification 
 
 ## Commandes
 
+`make help` liste toutes les cibles.
+
+| Commande | Effet |
+|---|---|
+| `make dev` | backend + frontend en parallèle |
+| `make dev-backend` · `make dev-frontend` | une seule des deux parties |
+| `make build` | frontend compilé puis embarqué dans le binaire |
+| `make build-frontend` · `make build-backend` | une seule étape de build |
+| `make openapi` | régénère `api/openapi.json` et `api/openapi-3.0.json` |
+| `make api-client` | `openapi`, puis régénère le client TypeScript |
+| `make test` | tests Go et Angular |
+| `make test-backend` · `make test-frontend` | une seule suite |
+| `make lint` | `go vet` + vérification du formatage |
+| `make fmt` | formate le code Go |
+| `make docker` | image Docker |
+| `make deploy` | transfert vers le NAS et redémarrage de la stack |
+| `make clean` | supprime les artefacts de build |
+
+Un test isolé :
+
 ```bash
-make dev          # backend + frontend en parallèle
-make build        # frontend compilé puis embarqué dans le binaire
-make openapi      # régénérer api/openapi.json et api/openapi-3.0.json
-make api-client   # régénérer le client TypeScript depuis la spécification
-make test         # tests Go et Angular
-make lint         # go vet + vérification du formatage
-make docker       # image Docker
-make deploy       # transfert vers le NAS et redémarrage de la stack
+cd backend  && go test ./internal/store/ -run TestTokenRoundTrip -v
+cd frontend && npx ng test --watch=false --filter "^DeviceList"
 ```
+
+Les tests Angular tournent sous Vitest dans jsdom : `--filter` prend une
+expression régulière testée contre les noms de suites et de tests.
 
 ### Faire évoluer l'API
 
@@ -143,6 +198,14 @@ ssh nas 'sudo chown -R 65532:65532 /volume1/docker/domotic/data'
 Y déposer également `.env` et `docker-compose.yml`.
 
 Mesuré sur ce squelette : **5,4 Mo de RAM** au repos, pour une image de 17,5 Mo.
+
+Pour essayer l'image localement avant de déployer :
+
+```bash
+make docker
+mkdir -p ./data && sudo chown -R 65532:65532 ./data
+docker run --rm -p 8080:8080 -v $(pwd)/data:/data --memory=128m domotic:latest
+```
 
 > Le binaire est compilé avec `GOAMD64=v1`, la valeur par défaut : le Celeron
 > N3050 est un Braswell sans AVX2, un binaire en `v3` refuserait de démarrer.
