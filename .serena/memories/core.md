@@ -24,6 +24,8 @@ DS216+, 1 Go RAM → toute dépendance/service se justifie.
 - Handlers ne lisent que SQLite ; seule exception `POST /api/devices/{id}/command`.
 - Changement de type/handler Go → `make api-client`.
 - Volets RTS : état toujours vide, pas de pièces côté TaHoma — pas des bugs.
+- Filtrage des passerelles TaHoma : sur `controllableName`, jamais sur le
+  préfixe de `deviceURL`.
 
 ## Mémoires ciblées
 - Versions, dépendances, contraintes de build : `mem:tech_stack`
@@ -31,6 +33,7 @@ DS216+, 1 Go RAM → toute dépendance/service se justifie.
 - Langue, style Go/Angular, contraintes OpenAPI : `mem:conventions`
 - Définition de « terminé » : `mem:task_completion`
 - Pièges Vitest/jsdom, fabriques de test : `mem:testing-setup`
+- Sonder la box sans jeton, endpoints locaux, critère de filtrage : `mem:tahoma-diagnostics`
 
 ## Contexte hors code
 Mémoire longue dans `.memory-bank/domotic/` (projectbrief, productContext,

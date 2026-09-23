@@ -118,6 +118,21 @@ sert une page explicative (`placeholderHTML`) et le backend reste pleinement
 utilisable. **Toute manipulation de ce répertoire doit préserver `.gitkeep`** ; c'est
 ce que font `build-frontend` et `clean` dans le `Makefile`.
 
+## Styles
+
+Le frontend n'utilise plus de SCSS : les styles sont des classes Tailwind 4 écrites
+dans les templates. Ne subsistent en CSS que `:host` et les composants Optimus visés
+par `styleClass` — qui accepte directement des classes Tailwind, d'où l'absence de
+`::ng-deep`.
+
+**L'ordre des couches CSS doit rester cohérent** entre le `@layer theme, base,
+optimus, components, utilities` de `src/styles.css` et l'option `cssLayer` passée à
+`provideOptimus`. Le rompre laisse le preflight de Tailwind écraser les composants.
+
+Une couleur du thème absente du plugin (qui ne mappe que `primary-*` et `surface-*`)
+se déclare dans le `@theme inline` de `src/styles.css` plutôt qu'en valeur arbitraire
+dans les templates.
+
 ## Pièges des intégrations
 
 ### Netatmo : la rotation du refresh token
@@ -145,6 +160,12 @@ en validant `ServerName: gateway-<pin>.local`, avec `overkiz-root-ca-2048.crt`
 embarqué. **Ne jamais recourir à `InsecureSkipVerify`** : la CA est publique et
 vérifiable, la désactiver n'apporterait rien.
 
+La box expose aussi ses propres composants et ses ponts de protocole comme des
+équipements. `isInfrastructure()` les écarte sur le **`controllableName`**, jamais sur
+le préfixe de `deviceURL` : filtrer `zigbee://` écarterait un vrai équipement Zigbee
+appairé plus tard, alors que seul le coordinateur porte un `Transceiver`. Seule la
+migration `0002` s'appuie sur le préfixe, faute de `controllableName` stocké.
+
 Le flux d'événements (`internal/tahoma/events.go`) tolère un listener expiré — la box
 les recycle — en le réenregistrant et en retentant une fois. La box impose **un appel
 par seconde maximum** sur `/events/{id}/fetch` ; `config.validate()` refuse un
@@ -165,8 +186,14 @@ intervalle plus court.
 ## Configuration
 
 Toute la configuration passe par l'environnement (`internal/config`), validée au
-démarrage. Le service démarre **sans aucun identifiant** : une intégration non
-configurée reste inerte, ce qui permet de les activer une par une.
+démarrage. **Le Makefile charge `.env`** — docker-compose le fait nativement, `make`
+non : sans cela les identifiants resteraient invisibles en développement. Deux
+conséquences : `DOMOTIC_DB_PATH` porte dans `.env.example` le chemin de
+développement (docker-compose impose le sien), et **tout test de configuration doit
+appeler `isolate(t)`**, sans quoi une configuration réelle le fait échouer.
+
+Le service démarre **sans aucun identifiant** : une intégration non configurée reste
+inerte, ce qui permet de les activer une par une.
 
 En revanche, une configuration **partiellement** renseignée fait échouer le démarrage —
 c'est presque toujours une faute de frappe, et une intégration silencieusement

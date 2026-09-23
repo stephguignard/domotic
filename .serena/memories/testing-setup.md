@@ -11,4 +11,7 @@
 ## Backend
 - Tests à côté du code (`*_test.go`) : config, store (round-trip jetons), types
   TaHoma, embed web.
+- **`make` charge `.env`** : tout test de config doit appeler `isolate(t)`
+  (`config_test.go`), qui vide les variables du service. Sans cela une
+  configuration réelle le fait échouer, et il ne passe que par chance.
 - Test réel de la rotation Netatmo : auth → redémarrer le binaire → appel suivant OK.

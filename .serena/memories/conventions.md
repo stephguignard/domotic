@@ -18,4 +18,13 @@
 - Store : signaux privés, API publique en `asReadonly()` / `computed()`,
   mutations par méthodes nommées.
 - Logique de présentation pure dans `core/device-state.ts`.
-- Styles : classes Tailwind dans les templates (plus de SCSS).
+- Styles : classes Tailwind dans les templates (plus de SCSS). Ne restent en CSS
+  que `:host` et les composants Optimus visés par `styleClass`.
+- Couleur ou rayon du thème Optimus absent du plugin (`primary-*`, `surface-*`
+  seuls) : le déclarer dans le `@theme inline` de `src/styles.css` plutôt que de
+  semer `text-[var(--p-…)]` dans les templates. `inline` conserve le basculement
+  clair/sombre.
+- Ajuster un composant Optimus passe par `styleClass="<classes tailwind>"` ;
+  plus aucun `::ng-deep`.
+- Classe sans style conservée = sélecteur de test (`room-title`, `reading`,
+  `commands`, `device-row`, `row-commands`, `state-row`) : ne pas la supprimer.
