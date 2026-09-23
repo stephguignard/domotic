@@ -1,0 +1,73 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: var(--p-content-background);
+}
+
+.app-toolbar {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.app-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin-right: 2rem;
+
+  i {
+    color: var(--p-primary-color);
+  }
+}
+
+.app-nav {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.app-nav-link {
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--p-content-border-radius);
+  color: var(--p-text-muted-color);
+  text-decoration: none;
+  transition: background-color 0.2s, color 0.2s;
+
+  &:hover {
+    background: var(--p-content-hover-background);
+    color: var(--p-text-color);
+  }
+
+  &.active {
+    background: var(--p-highlight-background);
+    color: var(--p-highlight-color);
+  }
+}
+
+.app-toolbar-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-main {
+  padding: 1.5rem;
+  max-width: 90rem;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .app-main {
+    padding: 1rem 0.75rem;
+  }
+
+  .app-brand span:not(.pi) {
+    display: none;
+  }
+}

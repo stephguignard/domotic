@@ -1,0 +1,90 @@
+@if (error()) {
+  <p-message severity="error" [text]="error()!" />
+} @else if (device(); as d) {
+  <p-card>
+    <ng-template #header>
+      <div class="detail-header">
+        <div class="identity">
+          <i [class]="kindIcon(d.kind)"></i>
+          <div>
+            <h1>{{ d.name }}</h1>
+            <p class="subtitle">
+              {{ kindLabel(d.kind) }}
+              @if (d.room) {
+                · {{ d.room }}
+              }
+            </p>
+          </div>
+        </div>
+
+        <div class="badges">
+          <p-tag [value]="d.source" [severity]="d.source === 'netatmo' ? 'info' : 'success'" />
+          @if (d.reachable) {
+            <p-tag value="En ligne" severity="success" />
+          } @else {
+            <p-tag value="Hors ligne" severity="danger" />
+          }
+        </div>
+      </div>
+    </ng-template>
+
+    <p class="updated">
+      Dernière mise à jour : {{ d.updated_at | date: 'dd/MM/yyyy à HH:mm:ss' }}
+    </p>
+
+    @if (isControllable(d) && commandsFor(d.kind).length > 0) {
+      <div class="commands">
+        @for (cmd of commandsFor(d.kind); track cmd.command) {
+          <p-button [label]="cmd.label" [icon]="cmd.icon" (onClick)="send(cmd.command)" />
+        }
+      </div>
+    }
+  </p-card>
+
+  <div class="panels">
+    <p-card header="État courant">
+      @if (readings().length > 0) {
+        <dl class="state-list">
+          @for (reading of readings(); track reading.metric) {
+            <div class="state-row">
+              <dt>{{ reading.label }}</dt>
+              <dd>{{ reading.value }}</dd>
+            </div>
+          }
+        </dl>
+      } @else {
+        <p class="muted">Aucun état remonté pour cet équipement.</p>
+      }
+    </p-card>
+
+    <p-card header="Historique">
+      @if (metricOptions().length > 0) {
+        <p-select
+          [options]="metricOptions()"
+          [ngModel]="selectedMetric()"
+          (ngModelChange)="selectedMetric.set($event)"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="metric-select"
+        />
+
+        @if (chartData(); as data) {
+          <div class="chart">
+            <p-chart type="line" [data]="data" [options]="chartOptions" height="320px" />
+          </div>
+        } @else {
+          <p class="muted">Aucun relevé pour cette grandeur.</p>
+        }
+      } @else {
+        <p class="muted">
+          Aucun relevé enregistré sur les sept derniers jours. Les équipements pilotables
+          (volets, portails) ne produisent pas de mesures.
+        </p>
+      }
+    </p-card>
+  </div>
+} @else {
+  <div class="centered">
+    <p-progressSpinner ariaLabel="Chargement" />
+  </div>
+}

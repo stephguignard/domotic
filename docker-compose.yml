@@ -1,0 +1,82 @@
+# Stack domotique pour Synology DS216+ (DSM 7.1, 1 Go de RAM).
+#
+# DSM 7.1 ne dispose pas de Container Manager : les commandes s'invoquent en
+# SSH avec `sudo docker-compose`. Sur DSM 7.2 et au-delà, `docker compose`.
+
+services:
+  domotic:
+    image: domotic:latest
+    container_name: domotic
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      # Base SQLite et jetons OAuth2. Ce volume porte le refresh token Netatmo :
+      # le perdre impose de refaire l'authentification.
+      #
+      # L'image distroless tourne en nonroot (UID 65532) : le répertoire doit
+      # lui appartenir, sinon le service échoue au démarrage sur
+      # « unable to open database file ».
+      #
+      #   mkdir -p data && sudo chown -R 65532:65532 data
+      - ./data:/data
+
+    environment:
+      DOMOTIC_PORT: 8080
+      DOMOTIC_DB_PATH: /data/domotic.db
+      DOMOTIC_PUBLIC_URL: ${DOMOTIC_PUBLIC_URL:-http://localhost:8080}
+
+      NETATMO_CLIENT_ID: ${NETATMO_CLIENT_ID:-}
+      NETATMO_CLIENT_SECRET: ${NETATMO_CLIENT_SECRET:-}
+      NETATMO_SCOPES: ${NETATMO_SCOPES:-read_station read_camera access_camera}
+      NETATMO_POLL_INTERVAL: ${NETATMO_POLL_INTERVAL:-10m}
+
+      # La box TaHoma est sur le LAN : le bridge Docker par défaut suffit tant
+      # que le NAS et la box partagent le même réseau.
+      TAHOMA_HOST: ${TAHOMA_HOST:-}
+      TAHOMA_PORT: ${TAHOMA_PORT:-8443}
+      TAHOMA_PIN: ${TAHOMA_PIN:-}
+      TAHOMA_TOKEN: ${TAHOMA_TOKEN:-}
+      TAHOMA_EVENT_INTERVAL: ${TAHOMA_EVENT_INTERVAL:-2s}
+
+    # Le service tient largement dans cette enveloppe ; la borne protège le NAS
+    # d'une dérive plutôt qu'elle ne contraint le fonctionnement normal.
+    mem_limit: 128m
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# --- Services optionnels ---------------------------------------------------
+#
+# Décommenter selon les besoins. Chacun consomme de la mémoire : sur 1 Go,
+# n'activer que ce qui sert réellement.
+
+#  # Broker MQTT, nécessaire uniquement pour piloter du Somfy RTS via un
+#  # ESP32 + CC1101. Empreinte : ~10 Mo.
+#  mosquitto:
+#    image: eclipse-mosquitto:2
+#    container_name: mosquitto
+#    restart: unless-stopped
+#    ports:
+#      - "1883:1883"
+#    volumes:
+#      - ./mosquitto/config:/mosquitto/config
+#      - ./mosquitto/data:/mosquitto/data
+#    mem_limit: 32m
+
+#  # Tunnel Cloudflare, nécessaire uniquement pour recevoir les webhooks de
+#  # sécurité Netatmo, qui exigent une URL HTTPS joignable depuis Internet.
+#  # Le reverse proxy de DSM est une alternative si vous avez déjà un domaine.
+#  cloudflared:
+#    image: cloudflare/cloudflared:latest
+#    container_name: cloudflared
+#    restart: unless-stopped
+#    command: tunnel --no-autoupdate run
+#    environment:
+#      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+#    mem_limit: 64m

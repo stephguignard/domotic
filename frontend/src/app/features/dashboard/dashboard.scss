@@ -1,0 +1,142 @@
+.centered {
+  display: flex;
+  justify-content: center;
+  padding: 4rem 0;
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  max-width: 32rem;
+  margin: 0 auto;
+
+  i {
+    font-size: 2.5rem;
+    color: var(--p-text-muted-color);
+  }
+
+  h2 {
+    margin: 1rem 0 0.5rem;
+    font-size: 1.25rem;
+  }
+
+  p {
+    color: var(--p-text-muted-color);
+    margin-bottom: 1.5rem;
+  }
+}
+
+.room {
+  margin-bottom: 2rem;
+}
+
+.room-title {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--p-text-muted-color);
+  margin: 0 0 0.75rem;
+}
+
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1rem;
+}
+
+.device-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  border-radius: var(--p-card-border-radius, 0.75rem);
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 2px;
+  }
+}
+
+.device-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem 0;
+}
+
+.device-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  min-width: 0;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  i {
+    color: var(--p-primary-color);
+    flex-shrink: 0;
+  }
+}
+
+.device-kind {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color);
+}
+
+.readings {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem 1rem;
+  margin: 0;
+}
+
+.reading {
+  min-width: 0;
+
+  dt {
+    font-size: 0.75rem;
+    color: var(--p-text-muted-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0.125rem 0 0;
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.no-reading {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color);
+  font-style: italic;
+}
+
+.commands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--p-content-border-color);
+}
+
+:host ::ng-deep .full-width {
+  width: 100%;
+  margin-bottom: 1rem;
+}

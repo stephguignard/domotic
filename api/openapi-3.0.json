@@ -1,0 +1,676 @@
+{
+  "components": {
+    "schemas": {
+      "CommandInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/CommandInputBody.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "command": {
+            "description": "Nom de la commande, ex. open, close, setClosure",
+            "minLength": 1,
+            "type": "string"
+          },
+          "parameters": {
+            "description": "Paramètres de la commande, selon l'équipement",
+            "items": {},
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "type": "object"
+      },
+      "CommandOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/CommandOutputBody.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "exec_id": {
+            "description": "Identifiant d'exécution attribué par la passerelle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exec_id"
+        ],
+        "type": "object"
+      },
+      "Device": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/Device.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "id": {
+            "description": "Identifiant de l'équipement dans sa source d'origine",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Type d'équipement, ex. weather_station, shutter, camera",
+            "type": "string"
+          },
+          "name": {
+            "description": "Nom lisible",
+            "type": "string"
+          },
+          "reachable": {
+            "description": "L'équipement répond-il ?",
+            "type": "boolean"
+          },
+          "room": {
+            "description": "Pièce, si connue",
+            "type": "string"
+          },
+          "source": {
+            "description": "Source de l'équipement",
+            "enum": [
+              "netatmo",
+              "tahoma"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "description": "État courant normalisé, encodé en JSON",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "Date du dernier rafraîchissement",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "name",
+          "kind",
+          "room",
+          "state",
+          "reachable",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "description": "Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'",
+            "type": "string"
+          },
+          "message": {
+            "description": "Error message text",
+            "type": "string"
+          },
+          "value": {
+            "description": "The value at the given location"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorModel": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/ErrorModel.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "detail": {
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "example": "Property foo is required but is missing.",
+            "type": "string"
+          },
+          "errors": {
+            "description": "Optional list of individual error details",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "instance": {
+            "description": "A URI reference that identifies the specific occurrence of the problem.",
+            "example": "https://example.com/error-log/abc123",
+            "format": "uri",
+            "type": "string"
+          },
+          "status": {
+            "description": "HTTP status code",
+            "example": 400,
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "description": "A short, human-readable summary of the problem type. This value should not change between occurrences of the error.",
+            "example": "Bad Request",
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "description": "A URI reference to human-readable documentation for the error.",
+            "example": "https://example.com/errors/example",
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "HealthOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/HealthOutputBody.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "database": {
+            "description": "La base de données répond-elle ?",
+            "type": "boolean"
+          },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceStatus"
+            },
+            "description": "État de chaque source, par nom",
+            "type": "object"
+          },
+          "status": {
+            "description": "État global du service",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "database",
+          "sources"
+        ],
+        "type": "object"
+      },
+      "ListDevicesOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/ListDevicesOutputBody.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "devices": {
+            "description": "Équipements correspondant aux filtres",
+            "items": {
+              "$ref": "#/components/schemas/Device"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "Nombre d'équipements retournés",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "devices",
+          "total"
+        ],
+        "type": "object"
+      },
+      "ListMeasurementsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/ListMeasurementsOutputBody.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "measurements": {
+            "description": "Relevés, du plus récent au plus ancien",
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "Nombre de relevés retournés",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "measurements",
+          "total"
+        ],
+        "type": "object"
+      },
+      "ListRoomsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/ListRoomsOutputBody.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "rooms": {
+            "description": "Pièces connues, sans doublon",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rooms"
+        ],
+        "type": "object"
+      },
+      "Measurement": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "description": "Équipement ayant produit le relevé",
+            "type": "string"
+          },
+          "metric": {
+            "description": "Grandeur mesurée, ex. temperature, humidity, co2",
+            "type": "string"
+          },
+          "recorded_at": {
+            "description": "Horodatage du relevé, tel que fourni par la source",
+            "format": "date-time",
+            "type": "string"
+          },
+          "value": {
+            "description": "Valeur mesurée",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "device_id",
+          "metric",
+          "value",
+          "recorded_at"
+        ],
+        "type": "object"
+      },
+      "SourceStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "description": "La source est-elle configurée ?",
+            "type": "boolean"
+          },
+          "healthy": {
+            "description": "Le dernier rafraîchissement a-t-il réussi ?",
+            "type": "boolean"
+          },
+          "last_error": {
+            "description": "Message de la dernière erreur rencontrée",
+            "type": "string"
+          },
+          "last_success": {
+            "description": "Dernier rafraîchissement réussi",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "healthy"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "API unifiée d'agrégation des équipements Netatmo et Somfy TaHoma.",
+    "title": "Domotic API",
+    "version": "dev"
+  },
+  "openapi": "3.0.3",
+  "paths": {
+    "/api/devices": {
+      "get": {
+        "description": "Retourne les équipements consolidés depuis toutes les sources configurées.",
+        "operationId": "list-devices",
+        "parameters": [
+          {
+            "description": "Ne retourner que les équipements de cette source",
+            "explode": false,
+            "in": "query",
+            "name": "source",
+            "schema": {
+              "description": "Ne retourner que les équipements de cette source",
+              "enum": [
+                "netatmo",
+                "tahoma"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Ne retourner que les équipements de cette pièce",
+            "explode": false,
+            "in": "query",
+            "name": "room",
+            "schema": {
+              "description": "Ne retourner que les équipements de cette pièce",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListDevicesOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Lister les équipements",
+        "tags": [
+          "Devices"
+        ]
+      }
+    },
+    "/api/devices/{id}": {
+      "get": {
+        "operationId": "get-device",
+        "parameters": [
+          {
+            "description": "Identifiant de l'équipement",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Identifiant de l'équipement",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Détail d'un équipement",
+        "tags": [
+          "Devices"
+        ]
+      }
+    },
+    "/api/devices/{id}/command": {
+      "post": {
+        "description": "Transmet une commande à l'équipement. Seuls les équipements TaHoma sont pilotables : l'API Netatmo météo est en lecture seule.",
+        "operationId": "send-command",
+        "parameters": [
+          {
+            "description": "Identifiant de l'équipement",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Identifiant de l'équipement",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommandInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandOutputBody"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Envoyer une commande",
+        "tags": [
+          "Devices"
+        ]
+      }
+    },
+    "/api/devices/{id}/measurements": {
+      "get": {
+        "description": "Retourne les relevés enregistrés pour un équipement, du plus récent au plus ancien.",
+        "operationId": "list-measurements",
+        "parameters": [
+          {
+            "description": "Identifiant de l'équipement",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Identifiant de l'équipement",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Ne retourner que cette grandeur, ex. temperature",
+            "explode": false,
+            "in": "query",
+            "name": "metric",
+            "schema": {
+              "description": "Ne retourner que cette grandeur, ex. temperature",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Début de la plage (RFC 3339)",
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "description": "Début de la plage (RFC 3339)",
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fin de la plage (RFC 3339)",
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "description": "Fin de la plage (RFC 3339)",
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Nombre maximum de relevés",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 1000,
+              "description": "Nombre maximum de relevés",
+              "format": "int64",
+              "maximum": 5000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMeasurementsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Historique des relevés",
+        "tags": [
+          "Measurements"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "description": "Retourne l'état de la base et de chaque source configurée. Le statut global est 'degraded' dès qu'une source activée est en échec.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "État du service",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/rooms": {
+      "get": {
+        "operationId": "list-rooms",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRoomsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Lister les pièces",
+        "tags": [
+          "Devices"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

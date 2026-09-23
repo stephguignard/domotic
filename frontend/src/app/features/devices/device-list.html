@@ -1,0 +1,100 @@
+<p-card>
+  <ng-template #header>
+    <div class="list-header">
+      <h1>Équipements</h1>
+
+      <div class="filters">
+        <p-select
+          [options]="sourceOptions"
+          [ngModel]="sourceFilter()"
+          (ngModelChange)="sourceFilter.set($event)"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Source"
+          styleClass="filter-select"
+        />
+        <p-select
+          [options]="roomOptions()"
+          [ngModel]="roomFilter()"
+          (ngModelChange)="roomFilter.set($event)"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Pièce"
+          styleClass="filter-select"
+        />
+      </div>
+    </div>
+  </ng-template>
+
+  <p-table
+    [value]="filtered()"
+    [loading]="store.loading()"
+    [paginator]="filtered().length > 20"
+    [rows]="20"
+    [rowsPerPageOptions]="[20, 50, 100]"
+    [rowHover]="true"
+    dataKey="id"
+    currentPageReportTemplate="{first} à {last} sur {totalRecords}"
+    [showCurrentPageReport]="true"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Nom</th>
+        <th>Type</th>
+        <th>Pièce</th>
+        <th>Source</th>
+        <th>État</th>
+        <th>Mise à jour</th>
+        <th class="actions-col">Actions</th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-device>
+      <tr (click)="open(device)" class="device-row">
+        <td>
+          <span class="device-name">
+            <i [class]="kindIcon(device.kind)"></i>
+            <span>{{ device.name }}</span>
+          </span>
+        </td>
+        <td>{{ kindLabel(device.kind) }}</td>
+        <td>{{ device.room || '—' }}</td>
+        <td>
+          <p-tag [value]="device.source" [severity]="sourceSeverity(device.source)" />
+        </td>
+        <td>
+          @if (device.reachable) {
+            <p-tag value="En ligne" severity="success" />
+          } @else {
+            <p-tag value="Hors ligne" severity="danger" />
+          }
+        </td>
+        <td class="timestamp">{{ device.updated_at | date: 'dd/MM HH:mm' }}</td>
+        <td class="actions-col">
+          @if (isControllable(device)) {
+            <div class="row-commands">
+              @for (cmd of commandsFor(device.kind); track cmd.command) {
+                <p-button
+                  [icon]="cmd.icon"
+                  severity="secondary"
+                  size="small"
+                  [text]="true"
+                  [rounded]="true"
+                  [ariaLabel]="cmd.label"
+                  [pTooltip]="cmd.label"
+                  (onClick)="send($event, device, cmd.command)"
+                />
+              }
+            </div>
+          }
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="7" class="empty-row">Aucun équipement ne correspond aux filtres.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</p-card>

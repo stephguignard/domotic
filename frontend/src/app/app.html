@@ -1,0 +1,34 @@
+<p-toast position="bottom-right" />
+
+<p-toolbar styleClass="app-toolbar">
+  <ng-template #start>
+    <span class="app-brand">
+      <i class="pi pi-home"></i>
+      <span>Domotic</span>
+    </span>
+
+    <nav class="app-nav">
+      <a routerLink="/dashboard" routerLinkActive="active" class="app-nav-link">Tableau de bord</a>
+      <a routerLink="/devices" routerLinkActive="active" class="app-nav-link">Équipements</a>
+    </nav>
+  </ng-template>
+
+  <ng-template #end>
+    <div class="app-toolbar-end">
+      <p-tag [value]="healthTag().label" [severity]="healthTag().severity" />
+      <p-button
+        icon="pi pi-refresh"
+        severity="secondary"
+        [text]="true"
+        [rounded]="true"
+        [loading]="store.loading()"
+        (onClick)="store.refresh()"
+        ariaLabel="Rafraîchir"
+      />
+    </div>
+  </ng-template>
+</p-toolbar>
+
+<main class="app-main">
+  <router-outlet />
+</main>

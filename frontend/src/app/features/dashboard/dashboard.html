@@ -1,0 +1,83 @@
+@if (store.loading() && store.devices().length === 0) {
+  <div class="centered">
+    <p-progressSpinner ariaLabel="Chargement" />
+  </div>
+} @else if (store.error()) {
+  <p-message severity="error" [text]="store.error()!" />
+} @else if (store.devices().length === 0) {
+  <p-card>
+    <div class="empty">
+      <i class="pi pi-inbox"></i>
+      <h2>Aucun équipement</h2>
+      <p>
+        Aucune source n'a encore remonté d'équipement. Vérifiez la configuration
+        des intégrations, puis connectez votre compte Netatmo si ce n'est pas fait.
+      </p>
+      <a href="/auth/netatmo" class="p-button p-button-outlined">
+        <i class="pi pi-link"></i>&nbsp;Connecter Netatmo
+      </a>
+    </div>
+  </p-card>
+} @else {
+  @if (store.unreachableCount() > 0) {
+    <p-message severity="warn" styleClass="full-width">
+      {{ store.unreachableCount() }} équipement(s) injoignable(s).
+    </p-message>
+  }
+
+  @for (group of store.byRoom(); track group.room) {
+    <section class="room">
+      <h2 class="room-title">{{ group.room }}</h2>
+
+      <div class="device-grid">
+        @for (device of group.devices; track device.id) {
+          <a [routerLink]="['/devices', device.id]" class="device-link">
+            <p-card styleClass="device-card">
+              <ng-template #header>
+                <div class="device-header">
+                  <span class="device-title">
+                    <i [class]="kindIcon(device.kind)"></i>
+                    <span>{{ device.name }}</span>
+                  </span>
+                  @if (!device.reachable) {
+                    <p-tag value="Hors ligne" severity="danger" />
+                  }
+                </div>
+              </ng-template>
+
+              <p class="device-kind">{{ kindLabel(device.kind) }}</p>
+
+              @if (readings(device).length > 0) {
+                <dl class="readings">
+                  @for (reading of readings(device); track reading.label) {
+                    <div class="reading">
+                      <dt>{{ reading.label }}</dt>
+                      <dd>{{ reading.value }}</dd>
+                    </div>
+                  }
+                </dl>
+              } @else {
+                <p class="no-reading">Aucune mesure</p>
+              }
+
+              @if (isControllable(device) && commandsFor(device.kind).length > 0) {
+                <div class="commands">
+                  @for (cmd of commandsFor(device.kind); track cmd.command) {
+                    <p-button
+                      [label]="cmd.label"
+                      [icon]="cmd.icon"
+                      severity="secondary"
+                      size="small"
+                      [outlined]="true"
+                      (onClick)="send($event, device, cmd.command)"
+                    />
+                  }
+                </div>
+              }
+            </p-card>
+          </a>
+        }
+      </div>
+    </section>
+  }
+}

@@ -1,0 +1,98 @@
+import { Device } from '../api';
+import { commandsFor, formatValue, isControllable, metricLabel, parseState } from './device-state';
+
+function device(overrides: Partial<Device> = {}): Device {
+  return {
+    id: 'io://1234-5678-9012/1',
+    source: 'tahoma',
+    name: 'Volet salon',
+    kind: 'shutter',
+    room: 'Salon',
+    state: '{}',
+    reachable: true,
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+describe('parseState', () => {
+  it("décode l'état JSON", () => {
+    const state = parseState(device({ state: '{"core:ClosureState":100}' }));
+    expect(state['core:ClosureState']).toBe(100);
+  });
+
+  it('tolère un état vide ou invalide', () => {
+    // L'état vient d'une source externe : une chaîne illisible ne doit pas
+    // faire tomber l'affichage de tout un équipement.
+    expect(parseState(device({ state: '' }))).toEqual({});
+    expect(parseState(device({ state: 'pas du json' }))).toEqual({});
+    expect(parseState(device({ state: 'null' }))).toEqual({});
+    // Un tableau est du JSON valide mais ne décrit pas un état.
+    expect(parseState(device({ state: '[1,2]' }))).toEqual({});
+  });
+});
+
+describe('formatValue', () => {
+  it("ajoute l'unité de la grandeur", () => {
+    expect(formatValue('temperature', 21.53)).toBe('21.5 °C');
+    expect(formatValue('humidity', 48)).toBe('48 %');
+    expect(formatValue('co2', 512)).toBe('512 ppm');
+  });
+
+  it('laisse les grandeurs sans unité telles quelles', () => {
+    expect(formatValue('core:StatusState', 'available')).toBe('available');
+  });
+
+  it('traduit les booléens', () => {
+    expect(formatValue('core:OnOffState', true)).toBe('Oui');
+    expect(formatValue('core:OnOffState', false)).toBe('Non');
+  });
+
+  it('gère une valeur absente', () => {
+    expect(formatValue('temperature', null)).toBe('—');
+    expect(formatValue('temperature', undefined)).toBe('—');
+  });
+
+  it('préserve une mesure nulle', () => {
+    // 0 °C est une température parfaitement légitime : la confondre avec une
+    // absence de mesure serait une régression visible en hiver.
+    expect(formatValue('temperature', 0)).toBe('0 °C');
+  });
+});
+
+describe('metricLabel', () => {
+  it('traduit les grandeurs connues', () => {
+    expect(metricLabel('temperature')).toBe('Température');
+    expect(metricLabel('core:ClosureState')).toBe('Fermeture');
+  });
+
+  it("nettoie les états Overkiz qu'il ne connaît pas", () => {
+    expect(metricLabel('core:SomethingState')).toBe('Something');
+  });
+});
+
+describe('isControllable', () => {
+  it('accepte un équipement TaHoma joignable', () => {
+    expect(isControllable(device())).toBe(true);
+  });
+
+  it('refuse un équipement injoignable', () => {
+    expect(isControllable(device({ reachable: false }))).toBe(false);
+  });
+
+  it('refuse les équipements Netatmo', () => {
+    // L'API météo Netatmo est en lecture seule ; le backend rejette de toute
+    // façon la commande, autant ne pas proposer le bouton.
+    expect(isControllable(device({ source: 'netatmo', kind: 'weather_station' }))).toBe(false);
+  });
+});
+
+describe('commandsFor', () => {
+  it('propose ouverture, stop et fermeture pour un volet', () => {
+    expect(commandsFor('shutter').map((c) => c.command)).toEqual(['open', 'stop', 'close']);
+  });
+
+  it('ne propose rien pour un capteur', () => {
+    expect(commandsFor('weather_station')).toEqual([]);
+  });
+});

@@ -1,0 +1,32 @@
+# Binaire compilé
+/domotic
+
+# Données locales (base SQLite et jetons OAuth2)
+/data/
+/backend/data/
+*.db
+*.db-shm
+*.db-wal
+
+# Frontend
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.angular/
+
+# Client API : entièrement dérivé de api/openapi-3.0.json, régénéré par
+# `make api-client`. Le versionner inviterait à l'éditer à la main.
+/frontend/src/app/api/
+
+# Build Angular embarqué dans le binaire. Seul .gitkeep reste suivi :
+# sans lui, le //go:embed du package web échouerait sur un dépôt fraîchement
+# cloné.
+/backend/web/dist/*
+!/backend/web/dist/.gitkeep
+
+# Secrets
+.env
+
+# IDE
+/.idea/
+/.vscode/
+*.iml
