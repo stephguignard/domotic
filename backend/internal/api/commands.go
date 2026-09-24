@@ -12,6 +12,7 @@ import (
 // ListCommandsInput porte les filtres de l'historique des commandes.
 type ListCommandsInput struct {
 	DeviceID string `query:"device_id" doc:"Ne retourner que les actions sur cet équipement"`
+	SceneID  int64  `query:"scene_id" doc:"Ne retourner que les actions de cette scène"`
 	Limit    int    `query:"limit" minimum:"1" maximum:"1000" default:"200" doc:"Nombre maximum d'entrées"`
 }
 
@@ -34,7 +35,7 @@ func registerCommands(api huma.API, d Deps) {
 			"Un équipement disparu depuis garde son historique.",
 		Tags: []string{"History"},
 	}, func(ctx context.Context, in *ListCommandsInput) (*ListCommandsOutput, error) {
-		entries, err := d.Store.ListCommands(ctx, store.CommandLogFilter{DeviceID: in.DeviceID, Limit: in.Limit})
+		entries, err := d.Store.ListCommands(ctx, store.CommandLogFilter{DeviceID: in.DeviceID, SceneID: in.SceneID, Limit: in.Limit})
 		if err != nil {
 			return nil, huma.Error500InternalServerError("lecture de l'historique", err)
 		}

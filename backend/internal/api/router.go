@@ -11,8 +11,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"github.com/stephguignard/domotic/internal/command"
 	"github.com/stephguignard/domotic/internal/config"
+	"github.com/stephguignard/domotic/internal/control"
 	"github.com/stephguignard/domotic/internal/hue"
 	"github.com/stephguignard/domotic/internal/netatmo"
 	"github.com/stephguignard/domotic/internal/poller"
@@ -31,35 +31,10 @@ type Deps struct {
 	Shelly  *shelly.Client
 	Hue     *hue.Client
 	Poller  *poller.Poller
+	// Control pilote les équipements et consigne les actions ; il sait quelles
+	// sources sont configurées.
+	Control *control.Controller
 	Log     *slog.Logger
-}
-
-// commander retourne le client qui pilote les équipements d'une source.
-//
-// controllable est faux pour une source en lecture seule. Pour une source
-// pilotable mais non configurée, le client retourné est nil : le tester sur
-// l'interface ne suffirait pas, un pointeur nil typé n'étant pas une interface
-// nil.
-func (d Deps) commander(source string) (c command.Commander, controllable bool) {
-	switch source {
-	case "tahoma":
-		if d.Tahoma == nil {
-			return nil, true
-		}
-		return d.Tahoma, true
-	case "shelly":
-		if d.Shelly == nil {
-			return nil, true
-		}
-		return d.Shelly, true
-	case "hue":
-		if d.Hue == nil {
-			return nil, true
-		}
-		return d.Hue, true
-	default:
-		return nil, false
-	}
 }
 
 // Config construit la configuration Huma du service.

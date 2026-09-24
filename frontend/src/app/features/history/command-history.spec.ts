@@ -30,6 +30,7 @@ describe('CommandHistory', () => {
       command: 'setBrightness',
       parameters: [40],
       success: true,
+      origin: 'interface',
       created_at: '2026-09-24T08:00:00Z',
       ...overrides,
     };

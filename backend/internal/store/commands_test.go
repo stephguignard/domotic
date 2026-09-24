@@ -92,3 +92,28 @@ func TestPurgeCommandsBefore(t *testing.T) {
 		t.Errorf("purge = %d, %v ; attendu 1 ligne", n, err)
 	}
 }
+
+func TestCommandLogOrigin(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	sceneID := int64(7)
+
+	for _, e := range []CommandLogEntry{
+		{DeviceID: "l-1", DeviceName: "L", DeviceKind: "light", Source: "hue", Command: "on", Success: true, CreatedAt: time.Now().UTC()},
+		{DeviceID: "l-1", DeviceName: "L", DeviceKind: "light", Source: "hue", Command: "off", Success: true,
+			Origin: OriginSceneSchedule, SceneID: &sceneID, SceneName: "Soirée", CreatedAt: time.Now().UTC()},
+	} {
+		if err := s.RecordCommand(ctx, e); err != nil {
+			t.Fatalf("RecordCommand: %v", err)
+		}
+	}
+
+	all, _ := s.ListCommands(ctx, CommandLogFilter{})
+	if all[1].Origin != OriginInterface || all[1].SceneID != nil {
+		t.Errorf("origine par défaut: %+v", all[1])
+	}
+	fromScene, err := s.ListCommands(ctx, CommandLogFilter{SceneID: sceneID})
+	if err != nil || len(fromScene) != 1 || fromScene[0].SceneName != "Soirée" || *fromScene[0].SceneID != 7 {
+		t.Errorf("filtre par scène: %+v, %v", fromScene, err)
+	}
+}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/stephguignard/domotic/internal/control"
 	"github.com/stephguignard/domotic/internal/store"
 )
 
@@ -121,10 +122,10 @@ func (d Deps) changeRoom(ctx context.Context, id string, room *string, action st
 	}
 
 	if err := d.Store.SetRoomOverride(ctx, id, room); err != nil {
-		d.recordCommand(ctx, device, action, params, err.Error())
+		d.Control.Record(ctx, device, action, params, err.Error(), control.Interface)
 		return nil, huma.Error500InternalServerError("enregistrement de la pièce", err)
 	}
-	d.recordCommand(ctx, device, action, params, "")
+	d.Control.Record(ctx, device, action, params, "", control.Interface)
 
 	updated, err := d.Store.GetDevice(ctx, id)
 	if err != nil {

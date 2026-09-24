@@ -48,7 +48,7 @@ export class CommandHistory {
 
   private load(deviceId: string | undefined, limit: number): void {
     this.loading.set(true);
-    this.historyApi.listCommands(deviceId, limit).subscribe({
+    this.historyApi.listCommands(deviceId, undefined, limit).subscribe({
       next: (response) => {
         this.entries.set(response.entries);
         this.error.set(false);

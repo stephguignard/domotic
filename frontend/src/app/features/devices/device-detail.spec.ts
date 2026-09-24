@@ -225,6 +225,7 @@ describe('DeviceDetail', () => {
           parameters: [],
           success: false,
           error: 'box injoignable',
+          origin: 'interface',
           created_at: '2026-09-24T08:00:00Z',
         },
       ],

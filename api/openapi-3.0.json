@@ -61,10 +61,28 @@
             "format": "int64",
             "type": "integer"
           },
+          "origin": {
+            "description": "Origine : l'interface, ou une scène lancée à la main ou par un horaire",
+            "enum": [
+              "interface",
+              "scene_manual",
+              "scene_schedule"
+            ],
+            "type": "string"
+          },
           "parameters": {
             "description": "Paramètres de la commande",
             "items": {},
             "type": "array"
+          },
+          "scene_id": {
+            "description": "Scène à l'origine de l'action, le cas échéant",
+            "format": "int64",
+            "type": "integer"
+          },
+          "scene_name": {
+            "description": "Nom de la scène au moment de l'action",
+            "type": "string"
           },
           "source": {
             "description": "Source de l'équipement",
@@ -90,6 +108,7 @@
           "command",
           "parameters",
           "success",
+          "origin",
           "created_at"
         ],
         "type": "object"
@@ -524,6 +543,17 @@
             "schema": {
               "description": "Ne retourner que les actions sur cet équipement",
               "type": "string"
+            }
+          },
+          {
+            "description": "Ne retourner que les actions de cette scène",
+            "explode": false,
+            "in": "query",
+            "name": "scene_id",
+            "schema": {
+              "description": "Ne retourner que les actions de cette scène",
+              "format": "int64",
+              "type": "integer"
             }
           },
           {

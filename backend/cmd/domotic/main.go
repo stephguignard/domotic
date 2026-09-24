@@ -21,7 +21,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stephguignard/domotic/internal/api"
+	"github.com/stephguignard/domotic/internal/command"
 	"github.com/stephguignard/domotic/internal/config"
+	"github.com/stephguignard/domotic/internal/control"
 	"github.com/stephguignard/domotic/internal/hue"
 	"github.com/stephguignard/domotic/internal/netatmo"
 	"github.com/stephguignard/domotic/internal/poller"
@@ -201,6 +203,20 @@ func buildDeps(cfg *config.Config, st *store.Store, log *slog.Logger) (api.Deps,
 		Shelly:  deps.Shelly,
 		Hue:     deps.Hue,
 	}, log)
+
+	// Seules les sources configurées sont ajoutées : un pointeur nil typé
+	// rangé dans l'interface Commander ne serait pas une interface nil.
+	commanders := map[string]command.Commander{}
+	if deps.Tahoma != nil {
+		commanders["tahoma"] = deps.Tahoma
+	}
+	if deps.Shelly != nil {
+		commanders["shelly"] = deps.Shelly
+	}
+	if deps.Hue != nil {
+		commanders["hue"] = deps.Hue
+	}
+	deps.Control = control.New(st, commanders, deps.Poller.Nudge, log)
 	return deps, nil
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 
+	"github.com/stephguignard/domotic/internal/control"
 	"github.com/stephguignard/domotic/internal/store"
 )
 
@@ -34,7 +35,7 @@ func TestCommandsAreRecorded(t *testing.T) {
 
 	_, api := humatest.New(t)
 	// Aucun client configuré : TaHoma répondra 503, Netatmo 422.
-	Register(api, Deps{Store: st})
+	Register(api, Deps{Store: st, Control: control.New(st, nil, nil, nil)})
 
 	if resp := api.Post("/api/devices/mod-1/command", map[string]any{"command": "open"}); resp.Code != http.StatusUnprocessableEntity {
 		t.Errorf("Netatmo : statut %d, attendu 422", resp.Code)
@@ -59,8 +60,8 @@ func TestCommandsAreRecorded(t *testing.T) {
 		t.Fatalf("attendu 2 entrées, obtenu %d: %+v", body.Total, body.Entries)
 	}
 	last := body.Entries[0]
-	if last.DeviceName != "Volet salon" || last.Command != "close" || last.Success ||
-		last.Error != "intégration tahoma non configurée" {
+	if last.DeviceName != "Volet salon" || last.Command != "close" || last.Success || last.Origin != store.OriginInterface ||
+		last.Error != "intégration non configurée : tahoma" {
 		t.Errorf("dernière entrée: %+v", last)
 	}
 
@@ -84,7 +85,7 @@ func TestRoomChangesAreApplied(t *testing.T) {
 	}
 
 	_, api := humatest.New(t)
-	Register(api, Deps{Store: st})
+	Register(api, Deps{Store: st, Control: control.New(st, nil, nil, nil)})
 
 	resp := api.Put("/api/devices/sw-1/room", map[string]any{"room": "  Buanderie "})
 	var device store.Device
@@ -124,7 +125,7 @@ func TestRoomOrder(t *testing.T) {
 	t.Cleanup(func() { st.Close() })
 
 	_, api := humatest.New(t)
-	Register(api, Deps{Store: st})
+	Register(api, Deps{Store: st, Control: control.New(st, nil, nil, nil)})
 
 	var body RoomOrderBody
 	if resp := api.Put("/api/rooms/order", map[string]any{"rooms": []string{" Salon", "Cuisine "}}); resp.Code != http.StatusOK {
