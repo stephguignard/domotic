@@ -204,6 +204,11 @@ Côté module, penser à **désactiver le point d'accès Wi-Fi** (`Wi-Fi > Acces
 Point`) : ouvert par défaut, il permet à quiconque à portée de piloter les
 relais.
 
+## Dans l'interface
+
+- **Lumières Hue** : luminosité, blanc (2000 à 6500 K) et couleur se règlent
+  depuis la fiche de la lampe.
+
 ## Commandes
 
 `make help` liste toutes les cibles.

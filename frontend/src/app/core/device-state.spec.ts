@@ -1,8 +1,10 @@
 import { Device } from '../api';
 import {
   commandsFor,
+  describeCommand,
   formatValue,
   isControllable,
+  lightSettings,
   metricLabel,
   needsConfirmation,
   parseState,
@@ -133,5 +135,49 @@ describe('needsConfirmation', () => {
     expect(needsConfirmation(device({ source: 'shelly', kind: 'switch' }))).toBe(true);
     expect(needsConfirmation(device({ source: 'hue', kind: 'light' }))).toBe(false);
     expect(needsConfirmation(device())).toBe(false);
+  });
+});
+
+describe('lightSettings', () => {
+  const light = (state: string) => device({ source: 'hue', kind: 'light', state });
+
+  it('expose les réglages que la lampe sait faire', () => {
+    expect(
+      lightSettings(
+        light('{"on":true,"brightness":57,"color":"#ffb35c","color_temperature":2240}'),
+      ),
+    ).toEqual({
+      brightness: 57,
+      color: '#ffb35c',
+      colorTemperature: 2240,
+    });
+  });
+
+  it("distingue une lampe réglée sur une couleur d'une lampe sans blancs", () => {
+    expect(
+      lightSettings(light('{"color":"#ff0000","color_temperature":null}')).colorTemperature,
+    ).toBeNull();
+    expect('colorTemperature' in lightSettings(light('{"color":"#ff0000"}'))).toBe(false);
+  });
+
+  it('ne propose rien pour une prise ou un autre type', () => {
+    expect(lightSettings(light('{"on":false}'))).toEqual({});
+    expect(lightSettings(device({ kind: 'shutter', state: '{"brightness":50}' }))).toEqual({});
+  });
+
+  it('écarte une couleur mal formée', () => {
+    expect(lightSettings(light('{"color":"rouge"}')).color).toBeUndefined();
+  });
+});
+
+describe('describeCommand', () => {
+  it('décrit les réglages avec leur valeur', () => {
+    expect(describeCommand('light', 'setBrightness', [40])).toBe('Luminosité réglée à 40 %');
+    expect(describeCommand('light', 'setColorTemperature', [2700])).toBe('Blanc réglé à 2700 K');
+  });
+
+  it('reprend le libellé du bouton pour les commandes simples', () => {
+    expect(describeCommand('shutter', 'close')).toBe('Commande « Fermer » envoyée');
+    expect(describeCommand('shutter', 'inconnue')).toBe('Commande « inconnue » envoyée');
   });
 });

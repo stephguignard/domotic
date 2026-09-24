@@ -22,6 +22,7 @@ import {
   sourceSeverity,
 } from '../../core/device-state';
 import { DevicesStore } from '../../core/devices.store';
+import { LightControls } from './light-controls';
 
 @Component({
   selector: 'app-device-detail',
@@ -35,6 +36,7 @@ import { DevicesStore } from '../../core/devices.store';
     SelectModule,
     MessageModule,
     ProgressSpinnerModule,
+    LightControls,
   ],
   templateUrl: './device-detail.html',
 })
@@ -52,7 +54,17 @@ export class DeviceDetail {
   protected readonly commandsFor = commandsFor;
   protected readonly sourceSeverity = sourceSeverity;
 
-  protected readonly device = signal<Device | null>(null);
+  /** Équipement chargé à l'ouverture de la page. */
+  private readonly loaded = signal<Device | null>(null);
+
+  /**
+   * Équipement affiché : la copie du store quand elle existe, puisque c'est
+   * elle que le rafraîchissement consécutif à une commande met à jour — sans
+   * quoi la page resterait figée sur l'état d'avant la commande.
+   */
+  protected readonly device = computed(
+    () => this.store.devices().find((d) => d.id === this.id()) ?? this.loaded(),
+  );
   protected readonly error = signal<string | null>(null);
   protected readonly measurements = signal<Measurement[]>([]);
   protected readonly selectedMetric = signal<string | null>(null);
@@ -143,11 +155,11 @@ export class DeviceDetail {
   private load(id: string): void {
     this.devicesApi.getDevice(id).subscribe({
       next: (device) => {
-        this.device.set(device);
+        this.loaded.set(device);
         this.error.set(null);
       },
       error: () => {
-        this.device.set(null);
+        this.loaded.set(null);
         this.error.set("Cet équipement est introuvable.");
       },
     });

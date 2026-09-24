@@ -14,7 +14,7 @@
             "type": "string"
           },
           "command": {
-            "description": "Nom de la commande, ex. open, close, on, off, setBrightness",
+            "description": "Nom de la commande, ex. open, close, on, off, setBrightness, setColor, setColorTemperature",
             "minLength": 1,
             "type": "string"
           },

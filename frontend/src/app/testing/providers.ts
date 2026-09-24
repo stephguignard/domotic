@@ -70,6 +70,19 @@ export function makeRelay(overrides: Partial<Device> = {}): Device {
   });
 }
 
+/** Construit une lampe couleur Hue de test, réglée sur un blanc chaud. */
+export function makeLight(overrides: Partial<Device> = {}): Device {
+  return makeDevice({
+    id: '8c2d7a3e-0000-4000-8000-000000000001',
+    source: 'hue',
+    name: 'Plafonnier',
+    kind: 'light',
+    room: 'Salon',
+    state: '{"on":true,"brightness":56.92,"color":"#ffb35c","color_temperature":2240}',
+    ...overrides,
+  });
+}
+
 /**
  * Répond aux deux appels que `DevicesStore.refresh()` déclenche.
  *

@@ -52,6 +52,8 @@ const METRIC_LABELS: Record<string, string> = {
   'core:TargetClosureState': 'Fermeture visée',
   on: 'Allumé',
   brightness: 'Luminosité',
+  color: 'Couleur',
+  color_temperature: 'Température de couleur',
   device_temperature: 'Température interne',
 };
 
@@ -75,6 +77,7 @@ const METRIC_UNITS: Record<string, string> = {
   'core:TargetClosureState': '%',
   'core:RSSILevelState': '%',
   brightness: '%',
+  color_temperature: 'K',
   device_temperature: '°C',
 };
 
@@ -173,6 +176,59 @@ const CONTROLLABLE_SOURCES = new Set(['tahoma', 'hue', 'shelly']);
 /** Indique si un équipement accepte des commandes. */
 export function isControllable(device: Device): boolean {
   return CONTROLLABLE_SOURCES.has(device.source) && device.reachable;
+}
+
+/**
+ * Réglages d'une lumière, tels que l'interface peut les proposer.
+ *
+ * Une propriété absente signifie que la lampe ne sait pas faire ce réglage :
+ * le backend ne remonte que les grandeurs qu'elle produit. `null` signifie
+ * qu'elle le sait mais n'y est pas réglée — une lampe d'ambiance réglée sur
+ * une couleur n'a pas de température de blanc.
+ */
+export interface LightSettings {
+  brightness?: number;
+  color?: string;
+  colorTemperature?: number | null;
+}
+
+/** Bornes des blancs réglables, en kelvins, communes aux lampes Hue d'ambiance. */
+export const COLOR_TEMPERATURE_RANGE = { min: 2000, max: 6500 } as const;
+
+/** Extrait les réglages d'une lumière de son état ; vide pour tout autre type. */
+export function lightSettings(device: Device): LightSettings {
+  if (device.kind !== 'light') {
+    return {};
+  }
+  const state = parseState(device);
+  const settings: LightSettings = {};
+
+  if (typeof state['brightness'] === 'number') {
+    settings.brightness = state['brightness'];
+  }
+  if (typeof state['color'] === 'string' && /^#[0-9a-f]{6}$/i.test(state['color'])) {
+    settings.color = state['color'];
+  }
+  if ('color_temperature' in state) {
+    const ct = state['color_temperature'];
+    settings.colorTemperature = typeof ct === 'number' ? ct : null;
+  }
+  return settings;
+}
+
+/** Décrit une commande pour la notification qui confirme son envoi. */
+export function describeCommand(kind: string, command: string, parameters: unknown[] = []): string {
+  const [value] = parameters;
+  switch (command) {
+    case 'setBrightness':
+      return `Luminosité réglée à ${value} %`;
+    case 'setColor':
+      return `Couleur réglée à ${value}`;
+    case 'setColorTemperature':
+      return `Blanc réglé à ${value} K`;
+  }
+  const label = commandsFor(kind).find((c) => c.command === command)?.label;
+  return label ? `Commande « ${label} » envoyée` : `Commande « ${command} » envoyée`;
 }
 
 /**

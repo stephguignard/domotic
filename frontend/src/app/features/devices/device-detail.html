@@ -39,6 +39,12 @@
         }
       </div>
     }
+
+    @if (isControllable(d) && d.kind === 'light') {
+      <div class="mt-6 max-w-md border-t border-divider pt-5">
+        <app-light-controls [device]="d" />
+      </div>
+    }
   </p-card>
 
   <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -50,7 +56,15 @@
               class="state-row flex items-baseline justify-between gap-4 border-b border-divider py-2.5 last:border-b-0"
             >
               <dt class="text-sm text-muted">{{ reading.label }}</dt>
-              <dd class="text-right font-medium tabular-nums">{{ reading.value }}</dd>
+              <dd class="inline-flex items-center gap-2 text-right font-medium tabular-nums">
+                @if (reading.metric === 'color') {
+                  <span
+                    class="swatch inline-block size-3.5 rounded-full border border-divider"
+                    [style.background-color]="reading.value"
+                  ></span>
+                }
+                {{ reading.value }}
+              </dd>
             </div>
           }
         </dl>

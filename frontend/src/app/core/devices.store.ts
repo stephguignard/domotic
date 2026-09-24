@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 
 import { Device, DevicesService, HealthOutputBody, HealthService } from '../api';
-import { commandsFor, needsConfirmation } from './device-state';
+import { commandsFor, describeCommand, needsConfirmation } from './device-state';
 
 /**
  * État partagé des équipements.
@@ -104,7 +104,7 @@ export class DevicesStore {
       header: `${label} « ${device.name} » ?`,
       message:
         'Cette commande agit sur une installation électrique. ' +
-        "Si un interrupteur physique est relié au module, il reprendra la main à son prochain changement.",
+        'Si un interrupteur physique est relié au module, il reprendra la main à son prochain changement.',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: label,
       rejectLabel: 'Annuler',
@@ -119,7 +119,7 @@ export class DevicesStore {
         this.messages.add({
           severity: 'success',
           summary: device.name,
-          detail: `Commande « ${command} » envoyée`,
+          detail: describeCommand(device.kind, command, parameters),
         });
 
         // Les sources exécutent la commande de façon asynchrone ; laisser au

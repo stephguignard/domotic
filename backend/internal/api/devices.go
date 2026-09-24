@@ -39,7 +39,7 @@ type GetDeviceOutput struct {
 type CommandInput struct {
 	ID   string `path:"id" doc:"Identifiant de l'équipement"`
 	Body struct {
-		Command    string `json:"command" minLength:"1" doc:"Nom de la commande, ex. open, close, on, off, setBrightness"`
+		Command    string `json:"command" minLength:"1" doc:"Nom de la commande, ex. open, close, on, off, setBrightness, setColor, setColorTemperature"`
 		Parameters []any  `json:"parameters,omitempty" doc:"Paramètres de la commande, selon l'équipement"`
 	}
 }

@@ -1,0 +1,66 @@
+@let s = settings();
+<div class="light-controls grid gap-5">
+  @if (s.brightness !== undefined) {
+    <label class="grid gap-2">
+      <span class="flex items-baseline justify-between text-sm">
+        <span class="text-muted">Luminosité</span>
+        <span class="tabular-nums">{{ brightness() | number: '1.0-0' }} %</span>
+      </span>
+      <input
+        type="range"
+        name="brightness"
+        min="1"
+        max="100"
+        step="1"
+        [value]="brightness()"
+        (input)="preview('brightness', $event)"
+        (change)="setBrightness($event)"
+        class="w-full cursor-pointer accent-primary"
+      />
+    </label>
+  }
+
+  @if (s.colorTemperature !== undefined) {
+    <label class="grid gap-2">
+      <span class="flex items-baseline justify-between text-sm">
+        <span class="text-muted">Blanc</span>
+        <span class="tabular-nums">
+          @if (colorTemperature(); as k) {
+            {{ k }} K
+          } @else {
+            réglée sur une couleur
+          }
+        </span>
+      </span>
+      <input
+        type="range"
+        name="color_temperature"
+        [min]="range.min"
+        [max]="range.max"
+        step="100"
+        [value]="colorTemperature() ?? 4000"
+        (input)="preview('colorTemperature', $event)"
+        (change)="setColorTemperature($event)"
+        class="w-full cursor-pointer accent-primary"
+      />
+      <!-- Repère visuel : du blanc chaud (2000 K) au blanc froid (6500 K). -->
+      <span
+        aria-hidden="true"
+        class="h-1.5 rounded-full bg-linear-to-r from-kelvin-warm via-kelvin-neutral to-kelvin-cool"
+      ></span>
+    </label>
+  }
+
+  @if (s.color !== undefined) {
+    <label class="flex items-center justify-between gap-4 text-sm">
+      <span class="text-muted">Couleur</span>
+      <input
+        type="color"
+        name="color"
+        [value]="s.color"
+        (change)="setColor($event)"
+        class="h-9 w-16 cursor-pointer rounded-content border border-divider bg-transparent p-0.5"
+      />
+    </label>
+  }
+</div>
