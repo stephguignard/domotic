@@ -1,8 +1,9 @@
 # Domotic
 
 Service d'agrégation domotique : un binaire Go qui consolide les équipements
-**Netatmo** (météo, sécurité), **Somfy TaHoma** (volets, portails) et **Shelly**
-(relais) derrière une API REST unifiée, avec une interface Angular embarquée.
+**Netatmo** (météo, sécurité), **Somfy TaHoma** (volets, portails), **Philips Hue**
+(éclairage) et **Shelly** (relais) derrière une API REST unifiée, avec une
+interface Angular embarquée.
 
 Conçu pour tourner sur un **Synology DS216+** — Celeron N3050, 1 Go de RAM —
 où Home Assistant ne tient pas. L'image Docker fait moins de 40 Mo et le
@@ -17,6 +18,8 @@ service se contente d'une cinquantaine de mégaoctets au repos.
                     │                              │
    TaHoma    ──────▶│   API REST + SQLite + SPA    │
    (LAN, port 8443) │                              │
+   Hue       ──────▶│                              │
+   (LAN, HTTPS)     │                              │
    Shelly    ──────▶│                              │
    (LAN, HTTP)      │                              │
                     └──────────────────────────────┘
@@ -156,6 +159,31 @@ Docker sur Synology est peu fiable. Le certificat de la box étant émis pour so
 nom `.local`, le client se connecte à l'IP tout en validant ce nom, avec la CA
 Overkiz embarquée dans le binaire — sans jamais désactiver la vérification TLS.
 
+### Philips Hue
+
+Pont carré (v2) ou Bridge Pro : le pont rond de première génération ne parle pas
+l'API v2.
+
+1. Réserver un bail DHCP fixe au pont, puis renseigner `HUE_HOST` avec son
+   **adresse IP** et `HUE_BRIDGE_ID` avec son identifiant (champ `bridgeid` de
+   `curl -sk https://<ip>/api/0/config`).
+2. Lancer `make hue-pair` et **appuyer sur le bouton du pont** dans la minute.
+   Sur le NAS : `sudo docker-compose run --rm domotic hue-pair`.
+3. Reporter la clé affichée dans `HUE_APP_KEY`.
+
+Les lumières remontent avec **leur pièce**, et leur état suit le flux
+d'événements du pont en temps réel.
+
+Le certificat du pont est signé par la CA privée de Signify, embarquée dans le
+binaire, et porte l'identifiant du pont dans son seul Common Name. Pour le
+vérifier à la main :
+
+```bash
+openssl s_client -connect <ip>:443 </dev/null 2>/dev/null | openssl x509 > pont.pem
+openssl verify -CAfile backend/internal/hue/hue-root-bridge-ca.crt pont.pem
+openssl x509 -in pont.pem -noout -subject   # CN = identifiant du pont, en minuscules
+```
+
 ### Shelly
 
 Modules **Gen2 et suivants** (Plus, Pro, Gen3, Gen4) ; les Gen1 parlent une
@@ -260,13 +288,14 @@ docker run --rm -p 8080:8080 -v $(pwd)/data:/data --memory=128m domotic:latest
 
 ```
 backend/
-  cmd/domotic/         point d'entrée : serve (défaut) et openapi
+  cmd/domotic/         point d'entrée : serve (défaut), openapi, hue-pair
   internal/
     config/            configuration par variables d'environnement
     store/             SQLite, migrations, persistance des jetons
     api/               opérations Huma et flux OAuth2
     netatmo/           client cloud, rotation du refresh token
     tahoma/            client local, CA Overkiz, flux d'événements
+    hue/               client local v2, CA Signify, flux SSE, appairage
     shelly/            client JSON-RPC Gen2+, authentification digest
     command/           contrat commun des sources pilotables
     poller/            boucles de rafraîchissement

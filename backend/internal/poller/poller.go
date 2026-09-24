@@ -8,12 +8,15 @@ package poller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"maps"
 	"sync"
 	"time"
 
 	"github.com/stephguignard/domotic/internal/config"
+	"github.com/stephguignard/domotic/internal/hue"
 	"github.com/stephguignard/domotic/internal/netatmo"
 	"github.com/stephguignard/domotic/internal/shelly"
 	"github.com/stephguignard/domotic/internal/store"
@@ -45,6 +48,7 @@ type Poller struct {
 	tahoma  *tahoma.Client
 	events  *tahoma.EventListener
 	shelly  *shelly.Client
+	hue     *hue.Client
 	log     *slog.Logger
 
 	mu     sync.RWMutex
@@ -62,6 +66,7 @@ type Clients struct {
 	Netatmo *netatmo.Client
 	Tahoma  *tahoma.Client
 	Shelly  *shelly.Client
+	Hue     *hue.Client
 }
 
 // New construit un poller.
@@ -72,14 +77,17 @@ func New(cfg *config.Config, st *store.Store, c Clients, log *slog.Logger) *Poll
 		netatmo: c.Netatmo,
 		tahoma:  c.Tahoma,
 		shelly:  c.Shelly,
+		hue:     c.Hue,
 		log:     log,
 		status: map[string]*SourceStatus{
 			"netatmo": {Enabled: cfg.Netatmo.Enabled()},
 			"tahoma":  {Enabled: cfg.Tahoma.Enabled()},
 			"shelly":  {Enabled: cfg.Shelly.Enabled()},
+			"hue":     {Enabled: cfg.Hue.Enabled()},
 		},
 		nudges: map[string]chan struct{}{
 			"shelly": make(chan struct{}, 1),
+			"hue":    make(chan struct{}, 1),
 		},
 	}
 	if c.Tahoma != nil {
@@ -146,6 +154,10 @@ func (p *Poller) Run(ctx context.Context) {
 	}
 	if p.shelly != nil {
 		wg.Go(func() { p.runShelly(ctx) })
+	}
+	if p.hue != nil {
+		wg.Go(func() { p.runHueInventory(ctx) })
+		wg.Go(func() { p.runHueEvents(ctx) })
 	}
 	wg.Go(func() { p.runRetention(ctx) })
 
@@ -343,6 +355,128 @@ func (p *Poller) refreshShelly(ctx context.Context) error {
 		}
 	}
 	return fetchErr
+}
+
+// runHueInventory recharge les lumières du pont, leurs pièces et leur
+// joignabilité. Comme pour TaHoma, les changements d'état arrivent par le flux
+// d'événements ; ce rechargement rattrape les ajouts, renommages, changements
+// de pièce, et ce que le flux aurait manqué pendant une coupure.
+func (p *Poller) runHueInventory(ctx context.Context) {
+	p.tick(ctx, 15*time.Minute, p.nudges["hue"], func(ctx context.Context) {
+		devices, err := p.hue.FetchDevices(ctx)
+		if err == nil {
+			err = p.store.UpsertDevices(ctx, devices)
+		}
+		p.record("hue", err)
+
+		if err != nil {
+			if ctx.Err() == nil {
+				p.log.Error("rafraîchissement de l'inventaire Hue", "error", err)
+			}
+			return
+		}
+		p.log.Debug("inventaire Hue rafraîchi", "devices", len(devices))
+	})
+}
+
+// runHueEvents suit le flux d'événements du pont et le rouvre quand il tombe.
+func (p *Poller) runHueEvents(ctx context.Context) {
+	failures := 0
+	for {
+		connected := false
+		err := p.hue.Stream(ctx, func(events []hue.Event) {
+			if !connected {
+				connected = true
+				if failures > 0 {
+					p.log.Info("flux d'événements Hue rétabli", "after_failures", failures)
+					failures = 0
+				}
+			}
+			p.applyHueEvents(ctx, events)
+		})
+		if ctx.Err() != nil {
+			return
+		}
+
+		// Des événements ont pu être perdus pendant la coupure : relire
+		// l'inventaire dès que possible.
+		p.Nudge("hue")
+
+		if errors.Is(err, hue.ErrIdle) {
+			p.log.Debug("flux d'événements Hue rouvert après inactivité")
+			continue
+		}
+
+		failures++
+		if failures == 1 || failures%30 == 0 {
+			p.log.Warn("flux d'événements Hue interrompu", "error", err, "consecutive_failures", failures)
+		}
+		// Palier de repli : jusqu'à une minute entre deux tentatives.
+		backoff := min(time.Duration(failures)*2*time.Second, time.Minute)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+	}
+}
+
+func (p *Poller) applyHueEvents(ctx context.Context, events []hue.Event) {
+	now := time.Now().UTC()
+
+	for _, e := range events {
+		if e.Type != "update" {
+			// Ajout ou suppression : l'inventaire sait reconstruire les pièces
+			// et les noms, que l'événement ne porte pas.
+			p.Nudge("hue")
+			continue
+		}
+		for _, r := range e.Data {
+			switch r.Type {
+			case "light":
+				p.mergeHueState(ctx, r, now)
+			case "zigbee_connectivity", "room", "device":
+				// La joignabilité et les pièces se rattachent aux appareils,
+				// pas aux lumières : l'inventaire fait la correspondance.
+				p.Nudge("hue")
+			}
+		}
+	}
+}
+
+// mergeHueState fusionne un état partiel dans l'état enregistré : un événement
+// « update » ne porte que les grandeurs qui ont changé.
+func (p *Poller) mergeHueState(ctx context.Context, r hue.EventResource, at time.Time) {
+	changes := r.LightState()
+	if len(changes) == 0 {
+		return // changement de couleur ou d'effet, non suivi
+	}
+
+	d, err := p.store.GetDevice(ctx, r.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		p.Nudge("hue") // lumière apparue depuis le dernier inventaire
+		return
+	}
+	if err != nil {
+		p.log.Error("lecture d'une lumière Hue", "device", r.ID, "error", err)
+		return
+	}
+
+	state := map[string]any{}
+	if err := json.Unmarshal([]byte(d.State), &state); err != nil {
+		state = map[string]any{} // état illisible : repartir des seules nouveautés
+	}
+	maps.Copy(state, changes)
+
+	encoded, err := json.Marshal(state)
+	if err != nil {
+		p.log.Error("sérialisation de l'état Hue", "device", r.ID, "error", err)
+		return
+	}
+	// Un événement prouve que la lumière répond.
+	if err := p.store.UpdateDeviceState(ctx, r.ID, string(encoded), true, at); err != nil {
+		p.log.Error("application d'un événement Hue", "device", r.ID, "error", err)
+	}
 }
 
 // runRetention purge quotidiennement les relevés trop anciens.

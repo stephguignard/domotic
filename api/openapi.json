@@ -385,7 +385,7 @@
     }
   },
   "info": {
-    "description": "API unifiée d'agrégation des équipements Netatmo, Somfy TaHoma et Shelly.",
+    "description": "API unifiée d'agrégation des équipements Netatmo, Somfy TaHoma, Philips Hue et Shelly.",
     "title": "Domotic API",
     "version": "dev"
   },

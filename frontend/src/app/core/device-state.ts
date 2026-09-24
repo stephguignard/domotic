@@ -51,6 +51,7 @@ const METRIC_LABELS: Record<string, string> = {
   'core:BatteryState': 'Batterie',
   'core:TargetClosureState': 'Fermeture visée',
   on: 'Allumé',
+  brightness: 'Luminosité',
   device_temperature: 'Température interne',
 };
 
@@ -73,6 +74,7 @@ const METRIC_UNITS: Record<string, string> = {
   'core:ClosureState': '%',
   'core:TargetClosureState': '%',
   'core:RSSILevelState': '%',
+  brightness: '%',
   device_temperature: '°C',
 };
 

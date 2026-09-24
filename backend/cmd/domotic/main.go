@@ -22,6 +22,7 @@ import (
 
 	"github.com/stephguignard/domotic/internal/api"
 	"github.com/stephguignard/domotic/internal/config"
+	"github.com/stephguignard/domotic/internal/hue"
 	"github.com/stephguignard/domotic/internal/netatmo"
 	"github.com/stephguignard/domotic/internal/poller"
 	"github.com/stephguignard/domotic/internal/shelly"
@@ -50,7 +51,7 @@ func main() {
 		hooks.OnStop(svc.stop)
 	})
 
-	cli.Root().AddCommand(openAPICommand())
+	cli.Root().AddCommand(openAPICommand(), huePairCommand())
 	cli.Run()
 }
 
@@ -184,10 +185,21 @@ func buildDeps(cfg *config.Config, st *store.Store, log *slog.Logger) (api.Deps,
 		log.Warn("intégration Shelly désactivée : SHELLY_HOSTS absent")
 	}
 
+	if cfg.Hue.Enabled() {
+		hc, err := hue.NewClient(cfg.Hue, log.With("source", "hue"))
+		if err != nil {
+			return api.Deps{}, err
+		}
+		deps.Hue = hc
+	} else {
+		log.Warn("intégration Hue désactivée : HUE_HOST, HUE_BRIDGE_ID et HUE_APP_KEY absents")
+	}
+
 	deps.Poller = poller.New(cfg, st, poller.Clients{
 		Netatmo: deps.Netatmo,
 		Tahoma:  deps.Tahoma,
 		Shelly:  deps.Shelly,
+		Hue:     deps.Hue,
 	}, log)
 	return deps, nil
 }
@@ -232,6 +244,51 @@ func openAPICommand() *cobra.Command {
 	cmd.Flags().StringVarP(&output, "output", "o", "-", "Fichier de sortie, '-' pour la sortie standard")
 	cmd.Flags().BoolVar(&downgrade, "downgrade", false, "Produire de l'OpenAPI 3.0.3 au lieu de 3.1")
 	cmd.Flags().BoolVar(&yamlFormat, "yaml", false, "Produire du YAML au lieu du JSON")
+	return cmd
+}
+
+// huePairCommand obtient la clé d'application du pont Hue.
+//
+// Elle lit HUE_HOST et HUE_BRIDGE_ID directement, sans passer par
+// config.Load : celle-ci refuse précisément la configuration « pont renseigné,
+// clé absente » qui est la situation normale avant l'appairage.
+func huePairCommand() *cobra.Command {
+	var timeout time.Duration
+
+	cmd := &cobra.Command{
+		Use:   "hue-pair",
+		Short: "Obtenir la clé d'application du pont Hue",
+		Long: "Demande une clé d'application au pont désigné par HUE_HOST et HUE_BRIDGE_ID. " +
+			"Appuyer sur le bouton du pont pendant l'attente, puis reporter la clé dans HUE_APP_KEY.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			hc := config.HueConfig{Host: os.Getenv("HUE_HOST"), BridgeID: os.Getenv("HUE_BRIDGE_ID")}
+			if hc.Host == "" || hc.BridgeID == "" {
+				return fmt.Errorf("renseigner HUE_HOST et HUE_BRIDGE_ID avant l'appairage")
+			}
+			client, err := hue.NewClient(hc, newLogger(false))
+			if err != nil {
+				return err
+			}
+
+			out := cmd.ErrOrStderr()
+			fmt.Fprintf(out, "Appuyez sur le bouton du pont %s (%s)… attente jusqu'à %s.\n", hc.BridgeID, hc.Host, timeout)
+
+			ctx, cancel := context.WithTimeout(cmd.Context(), timeout)
+			defer cancel()
+
+			hostname, _ := os.Hostname()
+			key, err := client.Pair(ctx, "domotic#"+hostname, func() { fmt.Fprint(out, ".") })
+			fmt.Fprintln(out)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(out, "Clé obtenue. Ajoutez cette ligne à .env :")
+			fmt.Fprintf(cmd.OutOrStdout(), "HUE_APP_KEY=%s\n", key)
+			return nil
+		},
+	}
+	cmd.Flags().DurationVar(&timeout, "timeout", time.Minute, "Durée d'attente de l'appui sur le bouton")
 	return cmd
 }
 
@@ -283,6 +340,7 @@ func logStartup(log *slog.Logger, cfg *config.Config) {
 		"netatmo", cfg.Netatmo.Enabled(),
 		"tahoma", cfg.Tahoma.Enabled(),
 		"shelly", cfg.Shelly.Enabled(),
+		"hue", cfg.Hue.Enabled(),
 	)
 	if cfg.Netatmo.Enabled() {
 		log.Info("authentification Netatmo disponible sur " + cfg.PublicURL + "/auth/netatmo")

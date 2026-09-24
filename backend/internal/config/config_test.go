@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -18,6 +19,7 @@ func isolate(t *testing.T) {
 		"NETATMO_CLIENT_ID", "NETATMO_CLIENT_SECRET", "NETATMO_SCOPES", "NETATMO_POLL_INTERVAL",
 		"TAHOMA_HOST", "TAHOMA_PORT", "TAHOMA_PIN", "TAHOMA_TOKEN", "TAHOMA_EVENT_INTERVAL",
 		"SHELLY_HOSTS", "SHELLY_PASSWORD", "SHELLY_POLL_INTERVAL",
+		"HUE_HOST", "HUE_BRIDGE_ID", "HUE_APP_KEY",
 	} {
 		t.Setenv(key, "")
 	}
@@ -43,6 +45,9 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if cfg.Shelly.Enabled() {
 		t.Error("Shelly ne devrait pas être activé sans adresse")
+	}
+	if cfg.Hue.Enabled() {
+		t.Error("Hue ne devrait pas être activé sans pont")
 	}
 }
 
@@ -164,5 +169,33 @@ func TestShellyRejectsTooShortInterval(t *testing.T) {
 
 	if _, err := Load(); err == nil {
 		t.Error("attendu une erreur pour un intervalle inférieur à 1s")
+	}
+}
+
+func TestHuePartialConfig(t *testing.T) {
+	cases := []struct {
+		name    string
+		env     map[string]string
+		wantErr string // vide : pas d'erreur attendue
+	}{
+		{"complète", map[string]string{"HUE_HOST": "192.168.1.101", "HUE_BRIDGE_ID": "ECB5FAFFFE943A44", "HUE_APP_KEY": "k"}, ""},
+		{"appairage à faire", map[string]string{"HUE_HOST": "192.168.1.101", "HUE_BRIDGE_ID": "ECB5FAFFFE943A44"}, "hue-pair"},
+		{"identifiant manquant", map[string]string{"HUE_HOST": "192.168.1.101", "HUE_APP_KEY": "k"}, "ensemble"},
+		{"hôte seul", map[string]string{"HUE_HOST": "192.168.1.101"}, "ensemble"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			isolate(t)
+			for k, v := range tc.env {
+				t.Setenv(k, v)
+			}
+			_, err := Load()
+			switch {
+			case tc.wantErr == "" && err != nil:
+				t.Errorf("erreur inattendue: %v", err)
+			case tc.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErr)):
+				t.Errorf("erreur = %v, attendu une erreur contenant %q", err, tc.wantErr)
+			}
+		})
 	}
 }
