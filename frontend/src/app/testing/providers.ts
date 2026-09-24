@@ -37,6 +37,8 @@ export function makeDevice(overrides: Partial<Device> = {}): Device {
     name: 'Volet salon',
     kind: 'shutter',
     room: 'Salon',
+    source_room: 'Salon',
+    room_overridden: false,
     state: '{"core:ClosureState":100}',
     reachable: true,
     updated_at: '2026-09-23T18:00:00Z',

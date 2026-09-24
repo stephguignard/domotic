@@ -226,6 +226,10 @@ export function actionLabel(kind: string, command: string, parameters: unknown[]
       return `Couleur ${value}`;
     case 'setColorTemperature':
       return `Blanc à ${value} K`;
+    case 'setRoom':
+      return value ? `Rangé dans « ${value} »` : 'Rangé sans pièce';
+    case 'resetRoom':
+      return 'Pièce de la source rétablie';
   }
   return commandsFor(kind).find((c) => c.command === command)?.label ?? command;
 }

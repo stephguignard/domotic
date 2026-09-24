@@ -29,8 +29,9 @@ func registerCommands(api huma.API, d Deps) {
 		Method:      http.MethodGet,
 		Path:        "/api/commands",
 		Summary:     "Historique des actions",
-		Description: "Retourne les commandes envoyées depuis l'interface, réussies ou non, " +
-			"de la plus récente à la plus ancienne. Un équipement disparu depuis garde son historique.",
+		Description: "Retourne les actions faites depuis l'interface — commandes, réussies ou non, et " +
+			"changements de pièce (setRoom, resetRoom) —, de la plus récente à la plus ancienne. " +
+			"Un équipement disparu depuis garde son historique.",
 		Tags: []string{"History"},
 	}, func(ctx context.Context, in *ListCommandsInput) (*ListCommandsOutput, error) {
 		entries, err := d.Store.ListCommands(ctx, store.CommandLogFilter{DeviceID: in.DeviceID, Limit: in.Limit})

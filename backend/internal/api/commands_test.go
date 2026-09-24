@@ -69,3 +69,49 @@ func TestCommandsAreRecorded(t *testing.T) {
 		t.Errorf("filtre par équipement : %d entrée(s), %v", body.Total, err)
 	}
 }
+
+func TestRoomChangesAreApplied(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(ctx, filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+	if err := st.UpsertDevices(ctx, []store.Device{
+		{ID: "sw-1", Source: "shelly", Name: "Eau chaude", Kind: "switch", UpdatedAt: time.Now().UTC()},
+	}); err != nil {
+		t.Fatalf("UpsertDevices: %v", err)
+	}
+
+	_, api := humatest.New(t)
+	Register(api, Deps{Store: st})
+
+	resp := api.Put("/api/devices/sw-1/room", map[string]any{"room": "  Buanderie "})
+	var device store.Device
+	if err := json.Unmarshal(resp.Body.Bytes(), &device); err != nil || resp.Code != http.StatusOK {
+		t.Fatalf("PUT : statut %d, %v", resp.Code, err)
+	}
+	if device.Room != "Buanderie" || !device.RoomOverridden {
+		t.Errorf("après choix : %+v", device)
+	}
+
+	resp = api.Delete("/api/devices/sw-1/room")
+	if err := json.Unmarshal(resp.Body.Bytes(), &device); err != nil || resp.Code != http.StatusOK {
+		t.Fatalf("DELETE : statut %d, %v", resp.Code, err)
+	}
+	if device.Room != "" || device.RoomOverridden {
+		t.Errorf("après rétablissement : %+v", device)
+	}
+
+	if resp := api.Put("/api/devices/inconnu/room", map[string]any{"room": "x"}); resp.Code != http.StatusNotFound {
+		t.Errorf("équipement inconnu : statut %d", resp.Code)
+	}
+
+	entries, err := st.ListCommands(ctx, store.CommandLogFilter{})
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("historique : %d entrée(s), %v", len(entries), err)
+	}
+	if entries[1].Command != "setRoom" || entries[1].Parameters[0] != "Buanderie" || entries[0].Command != "resetRoom" {
+		t.Errorf("historique : %+v", entries)
+	}
+}

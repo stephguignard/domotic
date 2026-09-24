@@ -91,11 +91,20 @@ SQLite ne sait pas modifier le `CHECK` sur `source`. Voir `0003` : la reconstruc
 se fait clés étrangères désactivées, sinon l'`ON DELETE CASCADE` efface tout
 l'historique de `measurement` — `TestSourceMigrationKeepsMeasurements` le vérifie.
 Mettre à jour aussi les `enum` de `store.Device`, `store.CommandLogEntry` et
-`ListDevicesInput`, et `SOURCES` dans `frontend/src/app/core/device-state.ts`.
+`ListDevicesInput`, et `SOURCES` dans `frontend/src/app/core/device-state.ts`. La
+reconstruction doit reprendre **toutes** les colonnes, `room_override` (0005)
+comprise.
 
-**Historique des actions.** Toute commande envoyée depuis l'interface, réussie
-ou refusée, est consignée dans `command_log` (`Deps.recordCommand`), sans clé
-étrangère vers `device` pour survivre à la disparition d'un équipement. Seul cas où un handler **écrit** en base : ces
+**Pièce choisie dans l'interface.** `room` est réécrite à chaque cycle par la
+source ; le choix de l'utilisateur vit dans `room_override` (NULL : suivre la
+source, chaîne vide : sans pièce), et les lectures exposent
+`COALESCE(room_override, room)`. Ne jamais faire écrire la pièce effective par
+`UpsertDevices` : elle deviendrait la pièce de la source.
+
+**Historique des actions.** Toute action faite depuis l'interface — commande,
+réussie ou refusée, et changement de pièce — est consignée dans `command_log`
+(`Deps.recordCommand`), sans clé étrangère vers `device` pour survivre à la
+disparition d'un équipement. Seul cas où un handler **écrit** en base : ces
 données naissent dans le service, pas chez une source. Rétention : un an.
 
 ### Le contrat d'API descend du code Go

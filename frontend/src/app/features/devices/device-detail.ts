@@ -24,6 +24,7 @@ import {
 import { DevicesStore } from '../../core/devices.store';
 import { CommandHistory } from '../history/command-history';
 import { LightControls } from './light-controls';
+import { RoomEditor } from './room-editor';
 
 @Component({
   selector: 'app-device-detail',
@@ -39,6 +40,7 @@ import { LightControls } from './light-controls';
     ProgressSpinnerModule,
     LightControls,
     CommandHistory,
+    RoomEditor,
   ],
   templateUrl: './device-detail.html',
 })

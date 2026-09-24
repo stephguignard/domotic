@@ -7,8 +7,9 @@ import (
 	"time"
 )
 
-// CommandLogEntry est une commande envoyée depuis l'interface, telle
-// qu'enregistrée dans l'historique.
+// CommandLogEntry est une action faite depuis l'interface, telle
+// qu'enregistrée dans l'historique : une commande transmise à la source, ou un
+// changement de pièce (setRoom, resetRoom), qui ne quitte pas le service.
 type CommandLogEntry struct {
 	ID         int64     `json:"id" doc:"Identifiant de l'entrée"`
 	DeviceID   string    `json:"device_id" doc:"Équipement visé"`

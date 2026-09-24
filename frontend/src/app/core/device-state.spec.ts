@@ -19,6 +19,8 @@ function device(overrides: Partial<Device> = {}): Device {
     name: 'Volet salon',
     kind: 'shutter',
     room: 'Salon',
+    source_room: 'Salon',
+    room_overridden: false,
     state: '{}',
     reachable: true,
     updated_at: new Date().toISOString(),

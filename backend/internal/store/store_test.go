@@ -321,3 +321,65 @@ func TestOpenAppliesMigrationsIdempotently(t *testing.T) {
 		t.Errorf("attendu 1 équipement conservé, obtenu %d", len(devices))
 	}
 }
+
+func TestRoomOverrideSurvivesPolling(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+
+	d := testDevice("io://1234/1") // pièce de la source : Salon
+	other := testDevice("io://1234/2")
+	other.Room = ""
+	if err := s.UpsertDevices(ctx, []Device{d, other}); err != nil {
+		t.Fatalf("UpsertDevices: %v", err)
+	}
+
+	cuisine := "Cuisine"
+	if err := s.SetRoomOverride(ctx, d.ID, &cuisine); err != nil {
+		t.Fatalf("SetRoomOverride: %v", err)
+	}
+	// Un nouveau cycle de polling réécrit la pièce de la source…
+	d.Room = "Séjour"
+	if err := s.UpsertDevices(ctx, []Device{d}); err != nil {
+		t.Fatalf("UpsertDevices: %v", err)
+	}
+
+	// … sans effacer le choix fait dans l'interface.
+	got, err := s.GetDevice(ctx, d.ID)
+	if err != nil {
+		t.Fatalf("GetDevice: %v", err)
+	}
+	if got.Room != "Cuisine" || got.SourceRoom != "Séjour" || !got.RoomOverridden {
+		t.Errorf("pièce = %q (source %q, choisie %v)", got.Room, got.SourceRoom, got.RoomOverridden)
+	}
+
+	// Filtres et liste des pièces suivent la pièce effective.
+	inKitchen, err := s.ListDevices(ctx, DeviceFilter{Room: "Cuisine"})
+	if err != nil || len(inKitchen) != 1 {
+		t.Errorf("filtre sur la pièce choisie : %d équipement(s), %v", len(inKitchen), err)
+	}
+	rooms, err := s.ListRooms(ctx)
+	if err != nil || len(rooms) != 1 || rooms[0] != "Cuisine" {
+		t.Errorf("pièces = %v, %v ; attendu [Cuisine]", rooms, err)
+	}
+
+	// Une chaîne vide range l'équipement « sans pièce », même si la source en donne une.
+	none := ""
+	if err := s.SetRoomOverride(ctx, d.ID, &none); err != nil {
+		t.Fatalf("SetRoomOverride vide: %v", err)
+	}
+	if got, _ := s.GetDevice(ctx, d.ID); got.Room != "" || !got.RoomOverridden {
+		t.Errorf("sans pièce choisie : pièce %q, choisie %v", got.Room, got.RoomOverridden)
+	}
+
+	// nil rétablit la pièce de la source.
+	if err := s.SetRoomOverride(ctx, d.ID, nil); err != nil {
+		t.Fatalf("SetRoomOverride nil: %v", err)
+	}
+	if got, _ := s.GetDevice(ctx, d.ID); got.Room != "Séjour" || got.RoomOverridden {
+		t.Errorf("après rétablissement : pièce %q, choisie %v", got.Room, got.RoomOverridden)
+	}
+
+	if err := s.SetRoomOverride(ctx, "inconnu", &cuisine); !errors.Is(err, ErrNotFound) {
+		t.Errorf("équipement inconnu : %v, attendu ErrNotFound", err)
+	}
+}

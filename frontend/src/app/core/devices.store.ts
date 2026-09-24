@@ -119,6 +119,37 @@ export class DevicesStore {
     });
   }
 
+  /**
+   * Range un équipement dans une pièce ; `null` rétablit celle de sa source.
+   * Le choix est consigné dans l'historique, comme une commande.
+   */
+  setRoom(device: Device, room: string | null): void {
+    const request =
+      room === null
+        ? this.devicesApi.resetDeviceRoom(device.id)
+        : this.devicesApi.setDeviceRoom(device.id, { room });
+
+    request.subscribe({
+      next: (updated) => {
+        this.devicesSignal.update((all) => all.map((d) => (d.id === updated.id ? updated : d)));
+        this.commandsSentSignal.update((n) => n + 1);
+        this.messages.add({
+          severity: 'success',
+          summary: device.name,
+          detail: updated.room ? `Rangé dans « ${updated.room} »` : 'Rangé sans pièce',
+        });
+      },
+      error: (err: unknown) => {
+        this.messages.add({
+          severity: 'error',
+          summary: device.name,
+          detail: describeError(err),
+          life: 8000,
+        });
+      },
+    });
+  }
+
   private execute(device: Device, command: string, parameters: unknown[]): void {
     this.devicesApi.sendCommand(device.id, { command, parameters }).subscribe({
       next: () => {

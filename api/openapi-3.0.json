@@ -141,8 +141,12 @@
             "type": "boolean"
           },
           "room": {
-            "description": "Pièce, si connue",
+            "description": "Pièce effective : celle choisie dans l'interface, sinon celle de la source",
             "type": "string"
+          },
+          "room_overridden": {
+            "description": "La pièce a-t-elle été choisie dans l'interface ?",
+            "type": "boolean"
           },
           "source": {
             "description": "Source de l'équipement",
@@ -152,6 +156,10 @@
               "hue",
               "shelly"
             ],
+            "type": "string"
+          },
+          "source_room": {
+            "description": "Pièce fournie par la source, vide si elle n'en fournit pas",
             "type": "string"
           },
           "state": {
@@ -170,6 +178,8 @@
           "name",
           "kind",
           "room",
+          "source_room",
+          "room_overridden",
           "state",
           "reachable",
           "updated_at"
@@ -420,6 +430,27 @@
         ],
         "type": "object"
       },
+      "SetRoomInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/SetRoomInputBody.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "room": {
+            "description": "Pièce choisie ; vide pour ranger l'équipement sans pièce",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "room"
+        ],
+        "type": "object"
+      },
       "SourceStatus": {
         "additionalProperties": false,
         "properties": {
@@ -458,7 +489,7 @@
   "paths": {
     "/api/commands": {
       "get": {
-        "description": "Retourne les commandes envoyées depuis l'interface, réussies ou non, de la plus récente à la plus ancienne. Un équipement disparu depuis garde son historique.",
+        "description": "Retourne les actions faites depuis l'interface — commandes, réussies ou non, et changements de pièce (setRoom, resetRoom) —, de la plus récente à la plus ancienne. Un équipement disparu depuis garde son historique.",
         "operationId": "list-commands",
         "parameters": [
           {
@@ -758,6 +789,102 @@
         "summary": "Historique des relevés",
         "tags": [
           "Measurements"
+        ]
+      }
+    },
+    "/api/devices/{id}/room": {
+      "delete": {
+        "description": "Annule le choix fait dans l'interface : l'équipement reprend la pièce fournie par sa source.",
+        "operationId": "reset-device-room",
+        "parameters": [
+          {
+            "description": "Identifiant de l'équipement",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Identifiant de l'équipement",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Rétablir la pièce de la source",
+        "tags": [
+          "Devices"
+        ]
+      },
+      "put": {
+        "description": "Range l'équipement dans une pièce, indépendamment de celle que fournit sa source. Le choix survit aux rafraîchissements et entre dans l'historique des actions.",
+        "operationId": "set-device-room",
+        "parameters": [
+          {
+            "description": "Identifiant de l'équipement",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Identifiant de l'équipement",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRoomInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Choisir la pièce d'un équipement",
+        "tags": [
+          "Devices"
         ]
       }
     },

@@ -75,6 +75,7 @@ func Register(api huma.API, d Deps) {
 	registerDevices(api, d)
 	registerMeasurements(api, d)
 	registerCommands(api, d)
+	registerRooms(api, d)
 	registerHealth(api, d)
 }
 

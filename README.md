@@ -206,8 +206,11 @@ relais.
 
 ## Dans l'interface
 
-- **Historique** : toutes les commandes envoyées depuis l'interface, réussies
-  ou non, sont conservées un an, sur la page
+- **Pièces** : chaque équipement peut être rangé dans une pièce depuis sa fiche,
+  indépendamment de sa source — utile pour TaHoma et Shelly, dont l'API locale
+  n'en fournit pas. Le choix survit aux rafraîchissements et se défait d'un clic.
+- **Historique** : toutes les actions faites depuis l'interface (commandes,
+  réussies ou non, et changements de pièce) sont conservées un an, sur la page
   *Historique* et dans la fiche de chaque équipement.
 - **Lumières Hue** : luminosité, blanc (2000 à 6500 K) et couleur se règlent
   depuis la fiche de la lampe.
