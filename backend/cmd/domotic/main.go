@@ -387,6 +387,9 @@ func logStartup(log *slog.Logger, cfg *config.Config) {
 		"timezone", cfg.Location.TimeZone.String(),
 		"solar", cfg.Location.HasCoordinates,
 	)
+	if cfg.Location.TimeZone == time.UTC {
+		log.Warn("heures des scènes comptées en UTC : renseigner DOMOTIC_TIMEZONE, ex. Europe/Zurich")
+	}
 	if cfg.Netatmo.Enabled() {
 		log.Info("authentification Netatmo disponible sur " + cfg.PublicURL + "/auth/netatmo")
 	}

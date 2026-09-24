@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -24,6 +26,9 @@ func isolate(t *testing.T) {
 	} {
 		t.Setenv(key, "")
 	}
+	// Le fuseau par défaut vient de la machine : le figer rend les tests
+	// indépendants de celle qui les exécute.
+	t.Setenv("TZ", "UTC")
 }
 
 func TestLoadDefaults(t *testing.T) {
@@ -242,5 +247,43 @@ func TestLocationDefaultsAndErrors(t *testing.T) {
 				t.Error("attendu une erreur")
 			}
 		})
+	}
+}
+
+func TestTimeZoneDefaultsToSystemZone(t *testing.T) {
+	isolate(t)
+
+	t.Setenv("TZ", "Europe/Paris")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := cfg.Location.TimeZone.String(); got != "Europe/Paris" {
+		t.Errorf("fuseau depuis TZ = %s", got)
+	}
+
+	// Sans TZ : la cible du lien /etc/localtime.
+	t.Setenv("TZ", "")
+	link := filepath.Join(t.TempDir(), "localtime")
+	if err := os.Symlink("/usr/share/zoneinfo/Europe/Zurich", link); err != nil {
+		t.Fatal(err)
+	}
+	localtimePath = link
+	t.Cleanup(func() { localtimePath = "/etc/localtime" })
+	if got := systemZoneName(); got != "Europe/Zurich" {
+		t.Errorf("fuseau depuis /etc/localtime = %s", got)
+	}
+
+	// Ni l'un ni l'autre, comme dans l'image distroless : UTC.
+	localtimePath = filepath.Join(t.TempDir(), "absent")
+	if got := systemZoneName(); got != "UTC" {
+		t.Errorf("fuseau sans indice = %s", got)
+	}
+
+	// DOMOTIC_TIMEZONE l'emporte sur la machine.
+	t.Setenv("TZ", "Europe/Paris")
+	t.Setenv("DOMOTIC_TIMEZONE", "America/New_York")
+	if cfg, _ := Load(); cfg.Location.TimeZone.String() != "America/New_York" {
+		t.Errorf("DOMOTIC_TIMEZONE ignorée : %s", cfg.Location.TimeZone)
 	}
 }

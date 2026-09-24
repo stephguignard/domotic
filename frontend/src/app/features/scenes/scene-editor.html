@@ -319,10 +319,17 @@
       </div>
 
       @if (!scenes.solarAvailable()) {
-        <p class="text-xs text-muted">
-          Lever et coucher du soleil : renseigner DOMOTIC_LATITUDE et DOMOTIC_LONGITUDE pour les
-          activer.
+        <p class="solar-hint text-xs text-muted">
+          Lever et coucher du soleil : renseigner DOMOTIC_LATITUDE et DOMOTIC_LONGITUDE dans .env,
+          puis redémarrer le service.
         </p>
+      }
+      @if (utc()) {
+        <p-message severity="warn" styleClass="utc-warning w-full">
+          Le service compte les heures en UTC : une scène réglée à 07:30 partira à 07:30 UTC, soit
+          09:30 à l'heure d'été suisse. Renseigner DOMOTIC_TIMEZONE (ex. Europe/Zurich) dans .env,
+          puis redémarrer le service.
+        </p-message>
       }
       @if (touchesRelays() && draft.schedules.length > 0) {
         <p-message severity="warn" styleClass="relay-warning w-full">
@@ -331,7 +338,7 @@
           arrêté.
         </p-message>
       }
-      @if (scenes.timeZone()) {
+      @if (scenes.timeZone() && !utc()) {
         <p class="text-xs text-muted">Heures exprimées dans le fuseau {{ scenes.timeZone() }}.</p>
       }
     </section>

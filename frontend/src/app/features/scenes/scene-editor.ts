@@ -89,11 +89,23 @@ export class SceneEditor {
       .map((d) => ({ label: `${d.name} — ${d.room || 'Sans pièce'}`, value: d.id })),
   );
 
-  protected readonly atOptions = computed(() => [
-    { label: 'Heure fixe', value: 'time', disabled: false },
-    { label: 'Lever du soleil', value: 'sunrise', disabled: !this.scenes.solarAvailable() },
-    { label: 'Coucher du soleil', value: 'sunset', disabled: !this.scenes.solarAvailable() },
-  ]);
+  /**
+   * Déclencheurs proposés. Sans coordonnées, les options solaires restent
+   * visibles mais désactivées, et disent pourquoi : une option grisée sans
+   * explication passe pour une panne.
+   */
+  protected readonly atOptions = computed(() => {
+    const solar = this.scenes.solarAvailable();
+    const why = solar ? '' : ' — coordonnées non configurées';
+    return [
+      { label: 'Heure fixe', value: 'time', disabled: false },
+      { label: `Lever du soleil${why}`, value: 'sunrise', disabled: !solar },
+      { label: `Coucher du soleil${why}`, value: 'sunset', disabled: !solar },
+    ];
+  });
+
+  /** Le service compte-t-il les heures en UTC, faute de fuseau configuré ? */
+  protected readonly utc = computed(() => ['UTC', 'Etc/UTC'].includes(this.scenes.timeZone()));
 
   /** La scène pilote-t-elle un relais, d'après l'aperçu ? */
   protected readonly touchesRelays = computed(() =>

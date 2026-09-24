@@ -157,6 +157,27 @@ describe('ScenesPage', () => {
     expect(document.body.textContent).toContain('scène invalide : le nom est vide');
     expect(document.querySelector('.scene-form')).not.toBeNull();
   });
+
+  it("explique pourquoi le soleil est indisponible et avertit d'un service en UTC", async () => {
+    const fixture = TestBed.createComponent(ScenesPage);
+    await fixture.whenStable();
+    http.expectOne('/api/scenes').flush({ scenes: [], solar_available: false, time_zone: 'UTC' });
+    await fixture.whenStable();
+
+    el(fixture).querySelector<HTMLButtonElement>('.new-scene button')!.click();
+    await fixture.whenStable();
+    const editor = fixture.debugElement.query(By.directive(SceneEditor))
+      .componentInstance as SceneEditor;
+    const options = (
+      editor as unknown as { atOptions: () => { label: string; disabled: boolean }[] }
+    ).atOptions();
+
+    expect(options.filter((o) => o.disabled).map((o) => o.label)).toEqual([
+      'Lever du soleil — coordonnées non configurées',
+      'Coucher du soleil — coordonnées non configurées',
+    ]);
+    expect(document.querySelector('.utc-warning')?.textContent).toContain('DOMOTIC_TIMEZONE');
+  });
 });
 
 describe('toSpec', () => {
