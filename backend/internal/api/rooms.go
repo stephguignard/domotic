@@ -19,12 +19,71 @@ type SetRoomInput struct {
 	}
 }
 
+// RoomOrderBody porte l'ordre d'affichage des pièces.
+type RoomOrderBody struct {
+	Rooms []string `json:"rooms" nullable:"false" maxItems:"100" doc:"Pièces, dans l'ordre d'affichage ; vide pour revenir à l'ordre alphabétique"`
+}
+
+// RoomOrderInput porte le nouvel ordre des pièces.
+type RoomOrderInput struct {
+	Body RoomOrderBody
+}
+
+// RoomOrderOutput renvoie l'ordre des pièces enregistré.
+type RoomOrderOutput struct {
+	Body RoomOrderBody
+}
+
 // RoomOutput renvoie l'équipement avec sa pièce à jour.
 type RoomOutput struct {
 	Body store.Device
 }
 
 func registerRooms(api huma.API, d Deps) {
+	huma.Register(api, huma.Operation{
+		OperationID: "get-room-order",
+		Method:      http.MethodGet,
+		Path:        "/api/rooms/order",
+		Summary:     "Ordre d'affichage des pièces",
+		Description: "Retourne les pièces classées, dans l'ordre choisi. Les pièces absentes de la liste " +
+			"n'ont pas été classées : l'interface les affiche ensuite, par ordre alphabétique.",
+		Tags: []string{"Devices"},
+	}, func(ctx context.Context, _ *struct{}) (*RoomOrderOutput, error) {
+		rooms, err := d.Store.RoomOrder(ctx)
+		if err != nil {
+			return nil, huma.Error500InternalServerError("lecture de l'ordre des pièces", err)
+		}
+		return &RoomOrderOutput{Body: RoomOrderBody{Rooms: rooms}}, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "set-room-order",
+		Method:      http.MethodPut,
+		Path:        "/api/rooms/order",
+		Summary:     "Choisir l'ordre d'affichage des pièces",
+		Description: "Remplace l'ordre des pièces. Une liste vide revient à l'ordre alphabétique.",
+		Tags:        []string{"Devices"},
+	}, func(ctx context.Context, in *RoomOrderInput) (*RoomOrderOutput, error) {
+		rooms := make([]string, 0, len(in.Body.Rooms))
+		seen := map[string]bool{}
+		for _, r := range in.Body.Rooms {
+			r = strings.TrimSpace(r)
+			if r == "" {
+				return nil, huma.Error422UnprocessableEntity("une pièce sans nom ne se classe pas")
+			}
+			if seen[r] {
+				return nil, huma.Error422UnprocessableEntity("pièce en double : " + r)
+			}
+			seen[r] = true
+			rooms = append(rooms, r)
+		}
+
+		if err := d.Store.SetRoomOrder(ctx, rooms); err != nil {
+			return nil, huma.Error500InternalServerError("enregistrement de l'ordre des pièces", err)
+		}
+		return &RoomOrderOutput{Body: RoomOrderBody{Rooms: rooms}}, nil
+	})
+
 	huma.Register(api, huma.Operation{
 		OperationID: "set-device-room",
 		Method:      http.MethodPut,

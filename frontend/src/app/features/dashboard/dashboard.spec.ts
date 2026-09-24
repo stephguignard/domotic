@@ -4,13 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Dashboard } from './dashboard';
 import { Device } from '../../api';
 import { DevicesStore } from '../../core/devices.store';
-import {
-  makeDevice,
-  makeLight,
-  makeRelay,
-  makeStation,
-  testProviders,
-} from '../../testing/providers';
+import { flushRoomOrder, makeDevice, makeLight, makeRelay, makeStation, testProviders } from '../../testing/providers';
 
 describe('Dashboard', () => {
   let http: HttpTestingController;
@@ -39,6 +33,7 @@ describe('Dashboard', () => {
 
     http.expectOne('/api/devices').flush({ devices, total: devices.length });
     http.expectOne('/api/health').flush({ status: 'ok', database: true, sources: {} });
+    flushRoomOrder();
 
     const fixture = TestBed.createComponent(Dashboard);
     await fixture.whenStable();
@@ -141,6 +136,7 @@ describe('Dashboard', () => {
         { status: 500, statusText: 'Internal Server Error' },
       );
     http.expectOne('/api/health').flush({ status: 'ok', database: true, sources: {} });
+    flushRoomOrder();
 
     const fixture = TestBed.createComponent(Dashboard);
     await fixture.whenStable();

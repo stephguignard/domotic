@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { App } from './app';
 import { HealthOutputBody } from './api';
-import { testProviders } from './testing/providers';
+import { flushRoomOrder, testProviders } from './testing/providers';
 
 describe('App', () => {
   let http: HttpTestingController;
@@ -26,6 +26,7 @@ describe('App', () => {
 
     http.expectOne('/api/devices').flush({ devices: [], total: 0 });
 
+    flushRoomOrder();
     const healthRequest = http.expectOne('/api/health');
     if (health) {
       healthRequest.flush(health);

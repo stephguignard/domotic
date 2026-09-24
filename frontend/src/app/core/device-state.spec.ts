@@ -12,6 +12,7 @@ import {
   parseState,
   powerState,
   sourceLabel,
+  sortRooms,
   sourceSeverity,
 } from './device-state';
 
@@ -208,5 +209,30 @@ describe('powerState / litColor', () => {
   it("n'entoure d'un halo que les équipements allumés", () => {
     expect(litGlow(light('{"on":true,"color":"#ff0000"}'))).toContain('#ff0000');
     expect(litGlow(light('{"on":false}'))).toBeNull();
+  });
+});
+
+describe('sortRooms', () => {
+  it("place les pièces classées dans l'ordre choisi, puis les autres par ordre alphabétique", () => {
+    const rooms = ['Salon', 'Bureau', 'Étage', 'Cuisine', 'Sans pièce', 'Lily'];
+    expect(sortRooms(rooms, ['Lily', 'Cuisine'])).toEqual([
+      'Lily',
+      'Cuisine',
+      'Bureau',
+      'Étage',
+      'Salon',
+      'Sans pièce',
+    ]);
+  });
+
+  it('garde « Sans pièce » en dernier même si elle a été classée', () => {
+    expect(sortRooms(['Sans pièce', 'Salon'], ['Sans pièce', 'Salon'])).toEqual([
+      'Salon',
+      'Sans pièce',
+    ]);
+  });
+
+  it('ignore les pièces classées qui ne sont plus représentées', () => {
+    expect(sortRooms(['Salon'], ['Grenier', 'Salon'])).toEqual(['Salon']);
   });
 });

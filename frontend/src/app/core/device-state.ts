@@ -169,6 +169,27 @@ export function kindIcon(kind: string): string {
   }
 }
 
+/** Libellé du groupe des équipements rangés dans aucune pièce. */
+export const NO_ROOM = 'Sans pièce';
+
+/**
+ * Trie des pièces pour l'affichage : d'abord celles que l'utilisateur a
+ * classées, dans son ordre ; ensuite les autres, par ordre alphabétique ;
+ * « Sans pièce » toujours en dernier.
+ */
+export function sortRooms(rooms: string[], order: readonly string[]): string[] {
+  const rank = (room: string) => {
+    const i = order.indexOf(room);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...rooms].sort((a, b) => {
+    if (a === NO_ROOM || b === NO_ROOM) {
+      return (a === NO_ROOM ? 1 : 0) - (b === NO_ROOM ? 1 : 0);
+    }
+    return rank(a) - rank(b) || a.localeCompare(b, 'fr');
+  });
+}
+
 /** Sources dont les équipements se pilotent. L'API météo Netatmo est en
  * lecture seule, et le backend rejette toute commande qui lui serait adressée. */
 const CONTROLLABLE_SOURCES = new Set(['tahoma', 'hue', 'shelly']);

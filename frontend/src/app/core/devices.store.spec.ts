@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { type Confirmation, ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 
 import { DevicesStore } from './devices.store';
-import { makeDevice, makeRelay, makeStation, testProviders } from '../testing/providers';
+import { flushRoomOrder, makeDevice, makeRelay, makeStation, testProviders } from '../testing/providers';
 
 describe('DevicesStore', () => {
   let store: DevicesStore;
@@ -23,6 +23,7 @@ describe('DevicesStore', () => {
     store.refresh();
     http.expectOne('/api/devices').flush({ devices, total: devices.length });
     http.expectOne('/api/health').flush({ status: 'ok', database: true, sources: {} });
+    flushRoomOrder();
   }
 
   it('expose les équipements chargés', () => {
@@ -81,6 +82,7 @@ describe('DevicesStore', () => {
       { status: 500, statusText: 'Internal Server Error' },
     );
     http.expectOne('/api/health').flush({ status: 'ok', database: true, sources: {} });
+    flushRoomOrder();
 
     expect(store.error()).toBe('lecture des équipements');
     expect(store.loading()).toBe(false);
@@ -92,6 +94,7 @@ describe('DevicesStore', () => {
 
     http.expectOne('/api/devices').flush({ devices: [makeDevice()], total: 1 });
     http.expectOne('/api/health').error(new ProgressEvent('error'));
+    flushRoomOrder();
 
     // L'état de santé est secondaire : son échec ne doit pas masquer les
     // équipements, ni être présenté comme une erreur de chargement.
@@ -192,5 +195,36 @@ describe('DevicesStore', () => {
       expect(confirm).not.toHaveBeenCalled();
       http.expectOne(`/api/devices/${encodeURIComponent(device.id)}/command`).flush({ exec_id: 'x' });
     });
+  });
+
+  it("groupe les pièces dans l'ordre choisi par l'utilisateur", () => {
+    store.refresh();
+    http.expectOne('/api/devices').flush({
+      devices: [
+        makeDevice({ id: 'a', room: 'Salon' }),
+        makeDevice({ id: 'b', room: 'Cuisine' }),
+        makeDevice({ id: 'c', room: '' }),
+        makeDevice({ id: 'd', room: 'Bureau' }),
+      ],
+      total: 4,
+    });
+    flushRoomOrder(['Salon']);
+    http.expectOne('/api/health').flush({ status: 'ok', database: true, sources: {} });
+
+    expect(store.byRoom().map((g) => g.room)).toEqual(['Salon', 'Bureau', 'Cuisine', 'Sans pièce']);
+    expect(store.rooms()).toEqual(['Salon', 'Bureau', 'Cuisine']);
+  });
+
+  it("enregistre l'ordre des pièces et l'applique aussitôt", () => {
+    load([makeDevice({ id: 'a', room: 'Salon' }), makeDevice({ id: 'b', room: 'Cuisine' })]);
+    expect(store.rooms()).toEqual(['Cuisine', 'Salon']);
+
+    store.saveRoomOrder(['Salon', 'Cuisine']);
+    const req = http.expectOne('/api/rooms/order');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ rooms: ['Salon', 'Cuisine'] });
+    req.flush({ rooms: ['Salon', 'Cuisine'] });
+
+    expect(store.rooms()).toEqual(['Salon', 'Cuisine']);
   });
 });

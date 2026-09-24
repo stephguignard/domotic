@@ -209,6 +209,8 @@ relais.
 - **Pièces** : chaque équipement peut être rangé dans une pièce depuis sa fiche,
   indépendamment de sa source — utile pour TaHoma et Shelly, dont l'API locale
   n'en fournit pas. Le choix survit aux rafraîchissements et se défait d'un clic.
+  L'ordre des pièces du tableau de bord se choisit avec *Organiser les pièces* ;
+  une pièce jamais classée s'affiche après les autres, par ordre alphabétique.
 - **Historique** : toutes les actions faites depuis l'interface (commandes,
   réussies ou non, et changements de pièce) sont conservées un an, sur la page
   *Historique* et dans la fiche de chaque équipement.

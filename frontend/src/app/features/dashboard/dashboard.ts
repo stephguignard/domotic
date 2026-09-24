@@ -22,6 +22,7 @@ import {
   sourceSeverity,
 } from '../../core/device-state';
 import { DevicesStore } from '../../core/devices.store';
+import { RoomOrder } from './room-order';
 
 /** Une grandeur prête à afficher sur une carte. */
 interface Reading {
@@ -31,7 +32,15 @@ interface Reading {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, CardModule, ButtonModule, TagModule, MessageModule, ProgressSpinnerModule],
+  imports: [
+    RouterLink,
+    CardModule,
+    ButtonModule,
+    TagModule,
+    MessageModule,
+    ProgressSpinnerModule,
+    RoomOrder,
+  ],
   templateUrl: './dashboard.html',
 })
 export class Dashboard {

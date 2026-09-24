@@ -115,3 +115,32 @@ func TestRoomChangesAreApplied(t *testing.T) {
 		t.Errorf("historique : %+v", entries)
 	}
 }
+
+func TestRoomOrder(t *testing.T) {
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	_, api := humatest.New(t)
+	Register(api, Deps{Store: st})
+
+	var body RoomOrderBody
+	if resp := api.Put("/api/rooms/order", map[string]any{"rooms": []string{" Salon", "Cuisine "}}); resp.Code != http.StatusOK {
+		t.Fatalf("PUT : statut %d", resp.Code)
+	}
+	resp := api.Get("/api/rooms/order")
+	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
+		t.Fatalf("réponse illisible: %v", err)
+	}
+	if len(body.Rooms) != 2 || body.Rooms[0] != "Salon" || body.Rooms[1] != "Cuisine" {
+		t.Errorf("ordre = %v", body.Rooms)
+	}
+
+	for _, bad := range [][]string{{"Salon", "Salon"}, {"Salon", "  "}} {
+		if resp := api.Put("/api/rooms/order", map[string]any{"rooms": bad}); resp.Code != http.StatusUnprocessableEntity {
+			t.Errorf("%q : statut %d, attendu 422", bad, resp.Code)
+		}
+	}
+}

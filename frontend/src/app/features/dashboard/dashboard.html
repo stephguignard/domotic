@@ -25,6 +25,12 @@
     </p-message>
   }
 
+  @if (store.rooms().length > 1) {
+    <div class="mb-2 flex justify-end">
+      <app-room-order />
+    </div>
+  }
+
   @for (group of store.byRoom(); track group.room) {
     <section class="mb-8">
       <h2 class="room-title mb-3 text-base font-semibold tracking-wider uppercase text-muted">

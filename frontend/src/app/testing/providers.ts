@@ -91,10 +91,11 @@ export function makeLight(overrides: Partial<Device> = {}): Device {
  * À appeler après `TestBed.createComponent`, sinon `HttpTestingController.verify()`
  * échouera sur des requêtes en attente.
  */
-export function flushRefresh(devices: Device[] = []): void {
+export function flushRefresh(devices: Device[] = [], roomOrder: string[] = []): void {
   const http = TestBed.inject(HttpTestingController);
 
   http.expectOne('/api/devices').flush({ devices, total: devices.length });
+  flushRoomOrder(roomOrder);
   http.expectOne('/api/health').flush({
     status: 'ok',
     database: true,
@@ -103,4 +104,9 @@ export function flushRefresh(devices: Device[] = []): void {
       tahoma: { enabled: true, healthy: true },
     },
   });
+}
+
+/** Répond à la lecture de l'ordre des pièces que `DevicesStore.refresh()` déclenche. */
+export function flushRoomOrder(rooms: string[] = []): void {
+  TestBed.inject(HttpTestingController).expectOne('/api/rooms/order').flush({ rooms });
 }

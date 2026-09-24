@@ -1,0 +1,50 @@
+<p-button
+  class="open-room-order"
+  label="Organiser les pièces"
+  icon="pi pi-sort-alt"
+  severity="secondary"
+  size="small"
+  [text]="true"
+  (onClick)="open()"
+/>
+
+<p-dialog
+  header="Ordre des pièces"
+  [modal]="true"
+  [dismissableMask]="true"
+  [visible]="visible()"
+  (visibleChange)="visible.set($event)"
+  [style]="{ width: '26rem' }"
+  [breakpoints]="{ '575px': '94vw' }"
+>
+  <p class="mb-3 text-sm text-muted">
+    Glissez les pièces, ou sélectionnez-en une et utilisez les flèches. « Sans pièce » reste en
+    dernier.
+  </p>
+
+  <p-orderList [value]="draft" [dragdrop]="true" scrollHeight="22rem" ariaLabel="Pièces">
+    <ng-template #item let-room>
+      <span class="room-item inline-flex items-center gap-2">
+        <i class="pi pi-bars text-muted"></i>
+        {{ room }}
+      </span>
+    </ng-template>
+  </p-orderList>
+
+  <ng-template #footer>
+    <p-button
+      class="reset-order"
+      label="Ordre alphabétique"
+      severity="secondary"
+      [text]="true"
+      (onClick)="resetAlphabetical()"
+    />
+    <p-button
+      label="Annuler"
+      severity="secondary"
+      [outlined]="true"
+      (onClick)="visible.set(false)"
+    />
+    <p-button class="save-order" label="Enregistrer" (onClick)="save()" />
+  </ng-template>
+</p-dialog>

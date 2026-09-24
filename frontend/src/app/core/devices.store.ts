@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 
 import { Device, DevicesService, HealthOutputBody, HealthService } from '../api';
-import { commandsFor, describeCommand, needsConfirmation } from './device-state';
+import { NO_ROOM, commandsFor, describeCommand, needsConfirmation, sortRooms } from './device-state';
 
 /**
  * État partagé des équipements.
@@ -24,6 +24,7 @@ export class DevicesStore {
   private readonly loadingSignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
   private readonly commandsSentSignal = signal(0);
+  private readonly roomOrderSignal = signal<string[]>([]);
 
   /** Équipements consolidés, toutes sources confondues. */
   readonly devices = this.devicesSignal.asReadonly();
@@ -38,18 +39,20 @@ export class DevicesStore {
    * chargement : l'historique s'y abonne pour se relire après chaque action.
    */
   readonly commandsSent = this.commandsSentSignal.asReadonly();
+  /** Pièces classées par l'utilisateur, dans son ordre. */
+  readonly roomOrder = this.roomOrderSignal.asReadonly();
 
-  /** Pièces représentées, triées. */
+  /** Pièces représentées, dans l'ordre d'affichage. */
   readonly rooms = computed(() => {
     const names = new Set(this.devicesSignal().map((d) => d.room).filter((r) => r !== ''));
-    return [...names].sort((a, b) => a.localeCompare(b, 'fr'));
+    return sortRooms([...names], this.roomOrderSignal());
   });
 
-  /** Équipements groupés par pièce, les équipements sans pièce en dernier. */
+  /** Équipements groupés par pièce, dans l'ordre d'affichage, sans pièce en dernier. */
   readonly byRoom = computed(() => {
     const groups = new Map<string, Device[]>();
     for (const device of this.devicesSignal()) {
-      const key = device.room || 'Sans pièce';
+      const key = device.room || NO_ROOM;
       const group = groups.get(key);
       if (group) {
         group.push(device);
@@ -57,13 +60,10 @@ export class DevicesStore {
         groups.set(key, [device]);
       }
     }
-    return [...groups.entries()]
-      .sort(([a], [b]) => {
-        if (a === 'Sans pièce') return 1;
-        if (b === 'Sans pièce') return -1;
-        return a.localeCompare(b, 'fr');
-      })
-      .map(([room, devices]) => ({ room, devices }));
+    return sortRooms([...groups.keys()], this.roomOrderSignal()).map((room) => ({
+      room,
+      devices: groups.get(room)!,
+    }));
   });
 
   /** Nombre d'équipements injoignables. */
@@ -85,6 +85,13 @@ export class DevicesStore {
         this.errorSignal.set(describeError(err));
         this.loadingSignal.set(false);
       },
+    });
+
+    // L'ordre des pièces est relu à chaque fois : il a pu changer depuis un
+    // autre navigateur. Son échec laisse l'ordre alphabétique, sans alerte.
+    this.devicesApi.getRoomOrder().subscribe({
+      next: (order) => this.roomOrderSignal.set(order.rooms),
+      error: () => undefined,
     });
 
     // L'état de santé est secondaire : son échec ne doit pas masquer les
@@ -146,6 +153,23 @@ export class DevicesStore {
           detail: describeError(err),
           life: 8000,
         });
+      },
+    });
+  }
+
+  /** Enregistre l'ordre des pièces ; une liste vide revient à l'ordre alphabétique. */
+  saveRoomOrder(rooms: string[]): void {
+    this.devicesApi.setRoomOrder({ rooms }).subscribe({
+      next: (order) => {
+        this.roomOrderSignal.set(order.rooms);
+        this.messages.add({
+          severity: 'success',
+          summary: 'Pièces',
+          detail: order.rooms.length ? 'Ordre des pièces enregistré' : 'Pièces rangées par ordre alphabétique',
+        });
+      },
+      error: (err: unknown) => {
+        this.messages.add({ severity: 'error', summary: 'Pièces', detail: describeError(err), life: 8000 });
       },
     });
   }
