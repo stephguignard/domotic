@@ -1,8 +1,8 @@
 # Domotic
 
 Service d'agrégation domotique : un binaire Go qui consolide les équipements
-**Netatmo** (météo, sécurité) et **Somfy TaHoma** (volets, portails) derrière une
-API REST unifiée, avec une interface Angular embarquée.
+**Netatmo** (météo, sécurité), **Somfy TaHoma** (volets, portails) et **Shelly**
+(relais) derrière une API REST unifiée, avec une interface Angular embarquée.
 
 Conçu pour tourner sur un **Synology DS216+** — Celeron N3050, 1 Go de RAM —
 où Home Assistant ne tient pas. L'image Docker fait moins de 40 Mo et le
@@ -17,6 +17,8 @@ service se contente d'une cinquantaine de mégaoctets au repos.
                     │                              │
    TaHoma    ──────▶│   API REST + SQLite + SPA    │
    (LAN, port 8443) │                              │
+   Shelly    ──────▶│                              │
+   (LAN, HTTP)      │                              │
                     └──────────────────────────────┘
 ```
 
@@ -154,6 +156,26 @@ Docker sur Synology est peu fiable. Le certificat de la box étant émis pour so
 nom `.local`, le client se connecte à l'IP tout en validant ce nom, avec la CA
 Overkiz embarquée dans le binaire — sans jamais désactiver la vérification TLS.
 
+### Shelly
+
+Modules **Gen2 et suivants** (Plus, Pro, Gen3, Gen4) ; les Gen1 parlent une
+autre API et ne sont pas pris en charge.
+
+1. Réserver un bail DHCP fixe à chaque module, et renseigner leurs **adresses
+   IP** dans `SHELLY_HOSTS`, séparées par des virgules.
+2. Si l'authentification est activée sur les modules (recommandé), renseigner
+   `SHELLY_PASSWORD` — le même pour tous.
+
+Chaque voie d'un module (`switch:0`, `switch:1`…) devient un équipement de type
+**relais**, nommé d'après le nom donné à la voie dans l'interface du module.
+L'API locale ne connaît pas de pièces. Toute commande sur un relais demande une
+confirmation dans l'interface : un chauffe-eau ou un chauffage coupé par erreur
+ne se voit pas.
+
+Côté module, penser à **désactiver le point d'accès Wi-Fi** (`Wi-Fi > Access
+Point`) : ouvert par défaut, il permet à quiconque à portée de piloter les
+relais.
+
 ## Commandes
 
 `make help` liste toutes les cibles.
@@ -245,6 +267,8 @@ backend/
     api/               opérations Huma et flux OAuth2
     netatmo/           client cloud, rotation du refresh token
     tahoma/            client local, CA Overkiz, flux d'événements
+    shelly/            client JSON-RPC Gen2+, authentification digest
+    command/           contrat commun des sources pilotables
     poller/            boucles de rafraîchissement
   web/                 frontend embarqué
 frontend/

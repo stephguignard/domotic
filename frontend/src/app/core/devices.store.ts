@@ -1,7 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { MessageService } from '@openng/optimus-ui/api';
+import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 
 import { Device, DevicesService, HealthOutputBody, HealthService } from '../api';
+import { commandsFor, needsConfirmation } from './device-state';
 
 /**
  * État partagé des équipements.
@@ -16,6 +17,7 @@ export class DevicesStore {
   private readonly devicesApi = inject(DevicesService);
   private readonly healthApi = inject(HealthService);
   private readonly messages = inject(MessageService);
+  private readonly confirmation = inject(ConfirmationService);
 
   private readonly devicesSignal = signal<Device[]>([]);
   private readonly healthSignal = signal<HealthOutputBody | null>(null);
@@ -87,8 +89,31 @@ export class DevicesStore {
     });
   }
 
-  /** Envoie une commande à un équipement, puis rafraîchit son état. */
+  /**
+   * Envoie une commande à un équipement, puis rafraîchit son état. Les
+   * commandes sensibles passent d'abord par une confirmation.
+   */
   sendCommand(device: Device, command: string, parameters: unknown[] = []): void {
+    if (!needsConfirmation(device)) {
+      this.execute(device, command, parameters);
+      return;
+    }
+
+    const label = commandsFor(device.kind).find((c) => c.command === command)?.label ?? command;
+    this.confirmation.confirm({
+      header: `${label} « ${device.name} » ?`,
+      message:
+        'Cette commande agit sur une installation électrique. ' +
+        "Si un interrupteur physique est relié au module, il reprendra la main à son prochain changement.",
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: label,
+      rejectLabel: 'Annuler',
+      rejectButtonProps: { severity: 'secondary', outlined: true },
+      accept: () => this.execute(device, command, parameters),
+    });
+  }
+
+  private execute(device: Device, command: string, parameters: unknown[]): void {
     this.devicesApi.sendCommand(device.id, { command, parameters }).subscribe({
       next: () => {
         this.messages.add({
@@ -97,9 +122,8 @@ export class DevicesStore {
           detail: `Commande « ${command} » envoyée`,
         });
 
-        // La box exécute la commande de façon asynchrone et remonte le nouvel
-        // état par son flux d'événements ; laisser au backend le temps de le
-        // consolider avant de relire.
+        // Les sources exécutent la commande de façon asynchrone ; laisser au
+        // backend le temps de consolider le nouvel état avant de relire.
         setTimeout(() => this.refresh(), 3000);
       },
       error: (err: unknown) => {

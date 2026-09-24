@@ -20,6 +20,7 @@ type Config struct {
 
 	Netatmo NetatmoConfig
 	Tahoma  TahomaConfig
+	Shelly  ShellyConfig
 }
 
 // NetatmoConfig porte les paramètres de l'API cloud Netatmo.
@@ -52,6 +53,24 @@ func (c TahomaConfig) Enabled() bool {
 	return c.Host != "" && c.Token != "" && c.PIN != ""
 }
 
+// ShellyConfig porte les paramètres des modules Shelly Gen2+ du réseau local.
+type ShellyConfig struct {
+	// Hosts liste les adresses IP des modules, pour la même raison que
+	// TAHOMA_HOST : mDNS est peu fiable depuis un conteneur Docker.
+	Hosts []string
+	// Password est commun à tous les modules ; vide si l'authentification est
+	// désactivée sur les modules.
+	Password string
+	// PollInterval espace les relevés d'état. Les modules répondent en local
+	// en quelques millisecondes : un intervalle court ne coûte presque rien.
+	PollInterval time.Duration
+}
+
+// Enabled indique si l'intégration Shelly est configurée.
+func (c ShellyConfig) Enabled() bool {
+	return len(c.Hosts) > 0
+}
+
 // Load lit la configuration depuis l'environnement et la valide.
 func Load() (*Config, error) {
 	cfg := &Config{
@@ -70,6 +89,11 @@ func Load() (*Config, error) {
 			PIN:           envStr("TAHOMA_PIN", ""),
 			Token:         envStr("TAHOMA_TOKEN", ""),
 			EventInterval: envDuration("TAHOMA_EVENT_INTERVAL", 2*time.Second),
+		},
+		Shelly: ShellyConfig{
+			Hosts:        envList("SHELLY_HOSTS"),
+			Password:     envStr("SHELLY_PASSWORD", ""),
+			PollInterval: envDuration("SHELLY_POLL_INTERVAL", 5*time.Second),
 		},
 	}
 
@@ -115,6 +139,14 @@ func (c *Config) validate() error {
 		return fmt.Errorf("TAHOMA_EVENT_INTERVAL doit valoir au moins 1s (valeur: %s)", t.EventInterval)
 	}
 
+	sh := c.Shelly
+	if !sh.Enabled() && sh.Password != "" {
+		return fmt.Errorf("SHELLY_PASSWORD est renseigné sans SHELLY_HOSTS")
+	}
+	if sh.Enabled() && sh.PollInterval < time.Second {
+		return fmt.Errorf("SHELLY_POLL_INTERVAL doit valoir au moins 1s (valeur: %s)", sh.PollInterval)
+	}
+
 	return nil
 }
 
@@ -129,6 +161,18 @@ func envStr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// envList lit une liste séparée par des virgules, en ignorant les espaces et
+// les éléments vides.
+func envList(key string) []string {
+	var out []string
+	for _, v := range strings.Split(os.Getenv(key), ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func envInt(key string, def int) int {

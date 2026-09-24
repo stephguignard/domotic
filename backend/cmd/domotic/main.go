@@ -24,6 +24,7 @@ import (
 	"github.com/stephguignard/domotic/internal/config"
 	"github.com/stephguignard/domotic/internal/netatmo"
 	"github.com/stephguignard/domotic/internal/poller"
+	"github.com/stephguignard/domotic/internal/shelly"
 	"github.com/stephguignard/domotic/internal/store"
 	"github.com/stephguignard/domotic/internal/tahoma"
 	"github.com/stephguignard/domotic/web"
@@ -177,7 +178,17 @@ func buildDeps(cfg *config.Config, st *store.Store, log *slog.Logger) (api.Deps,
 		log.Warn("intégration TaHoma désactivée : TAHOMA_HOST, TAHOMA_PIN et TAHOMA_TOKEN absents")
 	}
 
-	deps.Poller = poller.New(cfg, st, deps.Netatmo, deps.Tahoma, log)
+	if cfg.Shelly.Enabled() {
+		deps.Shelly = shelly.NewClient(cfg, log.With("source", "shelly"))
+	} else {
+		log.Warn("intégration Shelly désactivée : SHELLY_HOSTS absent")
+	}
+
+	deps.Poller = poller.New(cfg, st, poller.Clients{
+		Netatmo: deps.Netatmo,
+		Tahoma:  deps.Tahoma,
+		Shelly:  deps.Shelly,
+	}, log)
 	return deps, nil
 }
 
@@ -271,6 +282,7 @@ func logStartup(log *slog.Logger, cfg *config.Config) {
 		"db", cfg.DBPath,
 		"netatmo", cfg.Netatmo.Enabled(),
 		"tahoma", cfg.Tahoma.Enabled(),
+		"shelly", cfg.Shelly.Enabled(),
 	)
 	if cfg.Netatmo.Enabled() {
 		log.Info("authentification Netatmo disponible sur " + cfg.PublicURL + "/auth/netatmo")

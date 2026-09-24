@@ -41,6 +41,10 @@ services:
       TAHOMA_TOKEN: ${TAHOMA_TOKEN:-}
       TAHOMA_EVENT_INTERVAL: ${TAHOMA_EVENT_INTERVAL:-2s}
 
+      SHELLY_HOSTS: ${SHELLY_HOSTS:-}
+      SHELLY_PASSWORD: ${SHELLY_PASSWORD:-}
+      SHELLY_POLL_INTERVAL: ${SHELLY_POLL_INTERVAL:-5s}
+
     # Le service tient largement dans cette enveloppe ; la borne protège le NAS
     # d'une dérive plutôt qu'elle ne contraint le fonctionnement normal.
     mem_limit: 128m

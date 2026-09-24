@@ -15,6 +15,7 @@ import (
 
 	"github.com/stephguignard/domotic/internal/config"
 	"github.com/stephguignard/domotic/internal/netatmo"
+	"github.com/stephguignard/domotic/internal/shelly"
 	"github.com/stephguignard/domotic/internal/store"
 	"github.com/stephguignard/domotic/internal/tahoma"
 )
@@ -43,6 +44,7 @@ type Poller struct {
 	netatmo *netatmo.Client
 	tahoma  *tahoma.Client
 	events  *tahoma.EventListener
+	shelly  *shelly.Client
 	log     *slog.Logger
 
 	mu     sync.RWMutex
@@ -54,23 +56,34 @@ type Poller struct {
 	nudges map[string]chan struct{}
 }
 
-// New construit un poller. Les clients peuvent être nil si la source
+// Clients regroupe les clients des sources. Un client est nil quand la source
 // correspondante n'est pas configurée.
-func New(cfg *config.Config, st *store.Store, nc *netatmo.Client, tc *tahoma.Client, log *slog.Logger) *Poller {
+type Clients struct {
+	Netatmo *netatmo.Client
+	Tahoma  *tahoma.Client
+	Shelly  *shelly.Client
+}
+
+// New construit un poller.
+func New(cfg *config.Config, st *store.Store, c Clients, log *slog.Logger) *Poller {
 	p := &Poller{
 		cfg:     cfg,
 		store:   st,
-		netatmo: nc,
-		tahoma:  tc,
+		netatmo: c.Netatmo,
+		tahoma:  c.Tahoma,
+		shelly:  c.Shelly,
 		log:     log,
 		status: map[string]*SourceStatus{
 			"netatmo": {Enabled: cfg.Netatmo.Enabled()},
 			"tahoma":  {Enabled: cfg.Tahoma.Enabled()},
+			"shelly":  {Enabled: cfg.Shelly.Enabled()},
 		},
-		nudges: map[string]chan struct{}{},
+		nudges: map[string]chan struct{}{
+			"shelly": make(chan struct{}, 1),
+		},
 	}
-	if tc != nil {
-		p.events = tahoma.NewEventListener(tc)
+	if c.Tahoma != nil {
+		p.events = tahoma.NewEventListener(c.Tahoma)
 	}
 	return p
 }
@@ -130,6 +143,9 @@ func (p *Poller) Run(ctx context.Context) {
 	if p.tahoma != nil {
 		wg.Go(func() { p.runTahomaSetup(ctx) })
 		wg.Go(func() { p.runTahomaEvents(ctx) })
+	}
+	if p.shelly != nil {
+		wg.Go(func() { p.runShelly(ctx) })
 	}
 	wg.Go(func() { p.runRetention(ctx) })
 
@@ -284,6 +300,49 @@ func (p *Poller) applyEvents(ctx context.Context, events []tahoma.Event) {
 			p.log.Error("application d'un événement TaHoma", "device", e.DeviceURL, "error", err)
 		}
 	}
+}
+
+// runShelly relève l'état des modules Shelly à intervalle court. Les modules
+// proposent aussi un WebSocket de notifications, mais il demanderait une
+// dépendance de plus pour un gain de quelques secondes : sur le LAN, un relevé
+// toutes les cinq secondes ne coûte presque rien, et une commande déclenche de
+// toute façon un relevé immédiat (Nudge).
+func (p *Poller) runShelly(ctx context.Context) {
+	// Compteur d'échecs consécutifs : à cet intervalle, un module débranché
+	// produirait sinon une ligne de journal toutes les cinq secondes.
+	failures := 0
+
+	p.tick(ctx, p.cfg.Shelly.PollInterval, p.nudges["shelly"], func(ctx context.Context) {
+		err := p.refreshShelly(ctx)
+		p.record("shelly", err)
+
+		switch {
+		case err != nil && ctx.Err() == nil:
+			failures++
+			if failures == 1 || failures%60 == 0 {
+				p.log.Error("relevé Shelly", "error", err, "consecutive_failures", failures)
+			}
+		case err == nil && failures > 0:
+			p.log.Info("relevé Shelly rétabli", "after_failures", failures)
+			failures = 0
+		}
+	})
+}
+
+func (p *Poller) refreshShelly(ctx context.Context) error {
+	snap, fetchErr := p.shelly.Fetch(ctx)
+
+	// Les modules qui ont répondu sont enregistrés même si d'autres ont
+	// échoué : une panne isolée ne doit pas figer toute la source.
+	if err := p.store.UpsertDevices(ctx, snap.Devices); err != nil {
+		return err
+	}
+	for _, id := range snap.Unreachable {
+		if err := p.store.MarkUnreachable(ctx, "shelly", shelly.ModulePrefix(id)); err != nil {
+			return err
+		}
+	}
+	return fetchErr
 }
 
 // runRetention purge quotidiennement les relevés trop anciens.

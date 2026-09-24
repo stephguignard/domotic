@@ -385,7 +385,7 @@
     }
   },
   "info": {
-    "description": "API unifiée d'agrégation des équipements Netatmo et Somfy TaHoma.",
+    "description": "API unifiée d'agrégation des équipements Netatmo, Somfy TaHoma et Shelly.",
     "title": "Domotic API",
     "version": "dev"
   },

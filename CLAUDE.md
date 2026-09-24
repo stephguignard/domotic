@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Contexte
 
 Service d'agrégation domotique : un backend Go consolide les équipements **Netatmo**
-(cloud, OAuth2) et **Somfy TaHoma** (API locale sur le LAN) derrière une API REST
-unifiée, et sert lui-même un frontend Angular embarqué.
+(cloud, OAuth2), **Somfy TaHoma** et **Shelly** (API locales sur le LAN) derrière une
+API REST unifiée, et sert lui-même un frontend Angular embarqué.
 
 La cible de déploiement est un **Synology DS216+** : Celeron N3050, **1 Go de RAM**,
 DSM 7.1. Cette contrainte explique la plupart des choix d'architecture et doit être
@@ -69,8 +69,8 @@ est alors le comportement réel, du décodage de la réponse jusqu'au rendu.
 
 ```
 Netatmo (cloud) ──┐
-                  ├──▶ poller ──▶ SQLite ──▶ API REST ──▶ Angular
-TaHoma (LAN)    ──┘
+TaHoma (LAN)    ──┼──▶ poller ──▶ SQLite ──▶ API REST ──▶ Angular
+Shelly (LAN)    ──┘
 ```
 
 `internal/poller` interroge les sources en tâche de fond et consolide l'état en base ;
@@ -180,6 +180,22 @@ Le flux d'événements (`internal/tahoma/events.go`) tolère un listener expiré
 les recycle — en le réenregistrant et en retentant une fois. La box impose **un appel
 par seconde maximum** sur `/events/{id}/fetch` ; `config.validate()` refuse un
 intervalle plus court.
+
+### Shelly : Gen2+ seulement, relevé plutôt que WebSocket
+
+Seule l'API JSON-RPC Gen2+ est prise en charge. Les modules offrent un WebSocket de
+notifications, mais la stdlib n'a pas de client WebSocket : un relevé
+`Shelly.GetStatus` toutes les 5 s (plus un `Nudge` après chaque commande) évite
+cette dépendance. La configuration (noms des voies) n'est relue que toutes les
+15 min.
+
+Un module injoignable fait marquer ses voies injoignables (`MarkUnreachable`) sans
+bloquer les autres modules. L'authentification est un digest **SHA-256** (utilisateur
+`admin`), implémenté dans `internal/shelly/digest.go` et testé contre le vecteur de la
+RFC 7616.
+
+Les voies sont de type `switch`, et le frontend **confirme** toute commande sur ce
+type (`needsConfirmation`) : elles pilotent chauffe-eau et chauffages.
 
 ## Contraintes de déploiement
 

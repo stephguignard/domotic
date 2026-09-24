@@ -15,6 +15,7 @@ import (
 	"github.com/stephguignard/domotic/internal/config"
 	"github.com/stephguignard/domotic/internal/netatmo"
 	"github.com/stephguignard/domotic/internal/poller"
+	"github.com/stephguignard/domotic/internal/shelly"
 	"github.com/stephguignard/domotic/internal/store"
 	"github.com/stephguignard/domotic/internal/tahoma"
 )
@@ -26,6 +27,7 @@ type Deps struct {
 	Store   *store.Store
 	Netatmo *netatmo.Client
 	Tahoma  *tahoma.Client
+	Shelly  *shelly.Client
 	Poller  *poller.Poller
 	Log     *slog.Logger
 }
@@ -43,6 +45,11 @@ func (d Deps) commander(source string) (c command.Commander, controllable bool) 
 			return nil, true
 		}
 		return d.Tahoma, true
+	case "shelly":
+		if d.Shelly == nil {
+			return nil, true
+		}
+		return d.Shelly, true
 	default:
 		return nil, false
 	}
@@ -51,7 +58,7 @@ func (d Deps) commander(source string) (c command.Commander, controllable bool) 
 // Config construit la configuration Huma du service.
 func Config(version string) huma.Config {
 	cfg := huma.DefaultConfig("Domotic API", version)
-	cfg.Info.Description = "API unifiée d'agrégation des équipements Netatmo et Somfy TaHoma."
+	cfg.Info.Description = "API unifiée d'agrégation des équipements Netatmo, Somfy TaHoma et Shelly."
 	cfg.Servers = []*huma.Server{{URL: "/"}}
 	return cfg
 }

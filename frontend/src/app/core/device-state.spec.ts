@@ -4,6 +4,7 @@ import {
   formatValue,
   isControllable,
   metricLabel,
+  needsConfirmation,
   parseState,
   sourceLabel,
   sourceSeverity,
@@ -118,7 +119,19 @@ describe('commandsFor', () => {
     expect(commandsFor('shutter').map((c) => c.command)).toEqual(['open', 'stop', 'close']);
   });
 
+  it('propose marche et arrêt pour un relais', () => {
+    expect(commandsFor('switch').map((c) => c.command)).toEqual(['on', 'off']);
+  });
+
   it('ne propose rien pour un capteur', () => {
     expect(commandsFor('weather_station')).toEqual([]);
+  });
+});
+
+describe('needsConfirmation', () => {
+  it('exige une confirmation pour un relais, pas pour une lumière ni un volet', () => {
+    expect(needsConfirmation(device({ source: 'shelly', kind: 'switch' }))).toBe(true);
+    expect(needsConfirmation(device({ source: 'hue', kind: 'light' }))).toBe(false);
+    expect(needsConfirmation(device())).toBe(false);
   });
 });

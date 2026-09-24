@@ -148,6 +148,22 @@ func (s *Store) UpdateDeviceState(ctx context.Context, id, state string, reachab
 	return nil
 }
 
+// MarkUnreachable signale injoignables les équipements d'une source dont
+// l'identifiant commence par prefix, sans toucher à leur dernier état connu.
+// Sert quand un module entier ne répond plus : sans cela, l'interface
+// continuerait d'afficher son dernier état comme s'il était à jour.
+func (s *Store) MarkUnreachable(ctx context.Context, source, prefix string) error {
+	// substr plutôt que LIKE : un identifiant peut contenir « _ » ou « % »,
+	// que LIKE interpréterait comme des jokers.
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE device SET reachable = 0 WHERE source = ? AND substr(id, 1, length(?)) = ?`,
+		source, prefix, prefix)
+	if err != nil {
+		return fmt.Errorf("marquage des équipements %s injoignables: %w", prefix, err)
+	}
+	return nil
+}
+
 // ListRooms retourne les pièces connues, sans doublon.
 func (s *Store) ListRooms(ctx context.Context) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx,
