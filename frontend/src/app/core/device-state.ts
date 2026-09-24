@@ -50,6 +50,9 @@ const METRIC_LABELS: Record<string, string> = {
   'core:RSSILevelState': 'Signal',
   'core:BatteryState': 'Batterie',
   'core:TargetClosureState': 'Fermeture visée',
+  on: 'Allumé',
+  brightness: 'Luminosité',
+  device_temperature: 'Température interne',
 };
 
 /** Unités associées aux grandeurs, quand elles en ont une. */
@@ -71,6 +74,8 @@ const METRIC_UNITS: Record<string, string> = {
   'core:ClosureState': '%',
   'core:TargetClosureState': '%',
   'core:RSSILevelState': '%',
+  brightness: '%',
+  device_temperature: '°C',
 };
 
 /** Retourne le libellé lisible d'une grandeur. */
@@ -114,6 +119,7 @@ const KIND_LABELS: Record<string, string> = {
   window: 'Fenêtre',
   gate: 'Portail',
   light: 'Éclairage',
+  switch: 'Relais',
   sensor: 'Capteur',
   alarm: 'Alarme',
   thermostat: 'Thermostat',
@@ -147,6 +153,8 @@ export function kindIcon(kind: string): string {
       return 'pi pi-car';
     case 'light':
       return 'pi pi-lightbulb';
+    case 'switch':
+      return 'pi pi-power-off';
     case 'alarm':
       return 'pi pi-shield';
     case 'thermostat':
@@ -158,15 +166,49 @@ export function kindIcon(kind: string): string {
   }
 }
 
-/**
- * Indique si un équipement accepte des commandes.
- *
- * Seule la box TaHoma pilote des équipements ; l'API météo Netatmo est en
- * lecture seule, et le backend rejette toute commande qui lui serait adressée.
- */
+/** Sources dont les équipements se pilotent. L'API météo Netatmo est en
+ * lecture seule, et le backend rejette toute commande qui lui serait adressée. */
+const CONTROLLABLE_SOURCES = new Set(['tahoma', 'hue', 'shelly']);
+
+/** Indique si un équipement accepte des commandes. */
 export function isControllable(device: Device): boolean {
-  return device.source === 'tahoma' && device.reachable;
+  return CONTROLLABLE_SOURCES.has(device.source) && device.reachable;
 }
+
+/**
+ * Indique si une commande doit être confirmée avant envoi.
+ *
+ * Un relais commande une charge dont on ne voit pas l'effet depuis
+ * l'interface — chauffe-eau, chauffage — et qu'un clic égaré couperait sans
+ * que personne ne s'en aperçoive avant d'avoir froid.
+ */
+export function needsConfirmation(device: Device): boolean {
+  return device.kind === 'switch';
+}
+
+/** Sévérité d'un tag Optimus, telle qu'acceptée par `<p-tag>`. */
+export type TagSeverity = 'info' | 'success' | 'warn' | 'secondary' | 'contrast';
+
+/** Présentation de chaque source : libellé et couleur de son tag. */
+const SOURCES: Record<string, { label: string; severity: TagSeverity }> = {
+  netatmo: { label: 'Netatmo', severity: 'info' },
+  tahoma: { label: 'Somfy TaHoma', severity: 'success' },
+  hue: { label: 'Philips Hue', severity: 'warn' },
+  shelly: { label: 'Shelly', severity: 'contrast' },
+};
+
+/** Retourne le libellé lisible d'une source. */
+export function sourceLabel(source: string): string {
+  return SOURCES[source]?.label ?? source;
+}
+
+/** Retourne la sévérité du tag d'une source. */
+export function sourceSeverity(source: string): TagSeverity {
+  return SOURCES[source]?.severity ?? 'secondary';
+}
+
+/** Sources connues, pour les filtres. */
+export const SOURCE_IDS = Object.keys(SOURCES);
 
 /**
  * Commandes proposées pour un type d'équipement.
@@ -193,6 +235,11 @@ export function commandsFor(kind: string): { label: string; command: string; ico
     case 'light':
       return [
         { label: 'Allumer', command: 'on', icon: 'pi pi-lightbulb' },
+        { label: 'Éteindre', command: 'off', icon: 'pi pi-power-off' },
+      ];
+    case 'switch':
+      return [
+        { label: 'Allumer', command: 'on', icon: 'pi pi-play' },
         { label: 'Éteindre', command: 'off', icon: 'pi pi-power-off' },
       ];
     default:

@@ -55,6 +55,10 @@ dev-backend: ## Lancer le backend seul
 dev-frontend: ## Lancer le frontend seul
 	cd $(FRONTEND) && npm start
 
+.PHONY: hue-pair
+hue-pair: ## Obtenir la clé d'application du pont Hue (HUE_HOST et HUE_BRIDGE_ID dans .env)
+	cd $(BACKEND) && go run ./cmd/domotic hue-pair
+
 # --- Contrat d'API ---------------------------------------------------------
 
 .PHONY: openapi

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -17,6 +18,8 @@ func isolate(t *testing.T) {
 		"DOMOTIC_PORT", "DOMOTIC_DB_PATH", "DOMOTIC_PUBLIC_URL",
 		"NETATMO_CLIENT_ID", "NETATMO_CLIENT_SECRET", "NETATMO_SCOPES", "NETATMO_POLL_INTERVAL",
 		"TAHOMA_HOST", "TAHOMA_PORT", "TAHOMA_PIN", "TAHOMA_TOKEN", "TAHOMA_EVENT_INTERVAL",
+		"SHELLY_HOSTS", "SHELLY_PASSWORD", "SHELLY_POLL_INTERVAL",
+		"HUE_HOST", "HUE_BRIDGE_ID", "HUE_APP_KEY",
 	} {
 		t.Setenv(key, "")
 	}
@@ -39,6 +42,12 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if cfg.Tahoma.Enabled() {
 		t.Error("TaHoma ne devrait pas être activé sans identifiants")
+	}
+	if cfg.Shelly.Enabled() {
+		t.Error("Shelly ne devrait pas être activé sans adresse")
+	}
+	if cfg.Hue.Enabled() {
+		t.Error("Hue ne devrait pas être activé sans pont")
 	}
 }
 
@@ -124,5 +133,69 @@ func TestInvalidDurationFallsBackToDefault(t *testing.T) {
 	}
 	if cfg.Netatmo.PollInterval != 10*time.Minute {
 		t.Errorf("intervalle = %s, attendu la valeur par défaut de 10m", cfg.Netatmo.PollInterval)
+	}
+}
+
+func TestShellyHostsList(t *testing.T) {
+	isolate(t)
+	t.Setenv("SHELLY_HOSTS", " 192.168.1.105, ,192.168.1.106 ")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	want := []string{"192.168.1.105", "192.168.1.106"}
+	if len(cfg.Shelly.Hosts) != 2 || cfg.Shelly.Hosts[0] != want[0] || cfg.Shelly.Hosts[1] != want[1] {
+		t.Errorf("hôtes = %q, attendu %q", cfg.Shelly.Hosts, want)
+	}
+	if cfg.Shelly.PollInterval != 5*time.Second {
+		t.Errorf("intervalle par défaut = %s, attendu 5s", cfg.Shelly.PollInterval)
+	}
+}
+
+func TestShellyRejectsPartialConfig(t *testing.T) {
+	isolate(t)
+	t.Setenv("SHELLY_PASSWORD", "secret")
+
+	if _, err := Load(); err == nil {
+		t.Error("attendu une erreur pour un mot de passe sans hôte")
+	}
+}
+
+func TestShellyRejectsTooShortInterval(t *testing.T) {
+	isolate(t)
+	t.Setenv("SHELLY_HOSTS", "192.168.1.105")
+	t.Setenv("SHELLY_POLL_INTERVAL", "500ms")
+
+	if _, err := Load(); err == nil {
+		t.Error("attendu une erreur pour un intervalle inférieur à 1s")
+	}
+}
+
+func TestHuePartialConfig(t *testing.T) {
+	cases := []struct {
+		name    string
+		env     map[string]string
+		wantErr string // vide : pas d'erreur attendue
+	}{
+		{"complète", map[string]string{"HUE_HOST": "192.168.1.101", "HUE_BRIDGE_ID": "ECB5FAFFFE943A44", "HUE_APP_KEY": "k"}, ""},
+		{"appairage à faire", map[string]string{"HUE_HOST": "192.168.1.101", "HUE_BRIDGE_ID": "ECB5FAFFFE943A44"}, "hue-pair"},
+		{"identifiant manquant", map[string]string{"HUE_HOST": "192.168.1.101", "HUE_APP_KEY": "k"}, "ensemble"},
+		{"hôte seul", map[string]string{"HUE_HOST": "192.168.1.101"}, "ensemble"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			isolate(t)
+			for k, v := range tc.env {
+				t.Setenv(k, v)
+			}
+			_, err := Load()
+			switch {
+			case tc.wantErr == "" && err != nil:
+				t.Errorf("erreur inattendue: %v", err)
+			case tc.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErr)):
+				t.Errorf("erreur = %v, attendu une erreur contenant %q", err, tc.wantErr)
+			}
+		})
 	}
 }

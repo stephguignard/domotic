@@ -1,13 +1,9 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { MessageService } from '@openng/optimus-ui/api';
 
 import { App } from './app';
 import { HealthOutputBody } from './api';
-import { provideApi } from './api';
-import { routes } from './app.routes';
+import { testProviders } from './testing/providers';
 
 describe('App', () => {
   let http: HttpTestingController;
@@ -15,13 +11,7 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [
-        provideRouter(routes),
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideApi(''),
-        MessageService,
-      ],
+      providers: testProviders(),
     }).compileComponents();
 
     http = TestBed.inject(HttpTestingController);

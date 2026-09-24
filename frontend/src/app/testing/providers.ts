@@ -12,7 +12,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { EnvironmentProviders, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { MessageService } from '@openng/optimus-ui/api';
+import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 
 import { Device, provideApi } from '../api';
 import { routes } from '../app.routes';
@@ -25,6 +25,7 @@ export function testProviders(): (Provider | EnvironmentProviders)[] {
     provideHttpClientTesting(),
     provideApi(''),
     MessageService,
+    ConfirmationService,
   ];
 }
 
@@ -52,6 +53,19 @@ export function makeStation(overrides: Partial<Device> = {}): Device {
     kind: 'weather_station',
     room: 'Bureau',
     state: '{"temperature":21.5,"humidity":48,"co2":512,"noise":35,"pressure":1013}',
+    ...overrides,
+  });
+}
+
+/** Construit une voie de module Shelly de test. */
+export function makeRelay(overrides: Partial<Device> = {}): Device {
+  return makeDevice({
+    id: 'shellypro3-841fe88e5b68:switch:0',
+    source: 'shelly',
+    name: 'Eau chaude',
+    kind: 'switch',
+    room: '',
+    state: '{"on":true,"device_temperature":44}',
     ...overrides,
   });
 }

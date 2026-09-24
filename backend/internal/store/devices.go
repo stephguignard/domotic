@@ -16,9 +16,9 @@ var ErrNotFound = errors.New("introuvable")
 // source. Les tags JSON servent aussi à la génération du schéma OpenAPI.
 type Device struct {
 	ID        string    `json:"id" doc:"Identifiant de l'équipement dans sa source d'origine"`
-	Source    string    `json:"source" enum:"netatmo,tahoma" doc:"Source de l'équipement"`
+	Source    string    `json:"source" enum:"netatmo,tahoma,hue,shelly" doc:"Source de l'équipement"`
 	Name      string    `json:"name" doc:"Nom lisible"`
-	Kind      string    `json:"kind" doc:"Type d'équipement, ex. weather_station, shutter, camera"`
+	Kind      string    `json:"kind" doc:"Type d'équipement, ex. weather_station, shutter, light, switch"`
 	Room      string    `json:"room" doc:"Pièce, si connue"`
 	State     string    `json:"state" doc:"État courant normalisé, encodé en JSON"`
 	Reachable bool      `json:"reachable" doc:"L'équipement répond-il ?"`
@@ -144,6 +144,22 @@ func (s *Store) UpdateDeviceState(ctx context.Context, id, state string, reachab
 	}
 	if n == 0 {
 		return ErrNotFound
+	}
+	return nil
+}
+
+// MarkUnreachable signale injoignables les équipements d'une source dont
+// l'identifiant commence par prefix, sans toucher à leur dernier état connu.
+// Sert quand un module entier ne répond plus : sans cela, l'interface
+// continuerait d'afficher son dernier état comme s'il était à jour.
+func (s *Store) MarkUnreachable(ctx context.Context, source, prefix string) error {
+	// substr plutôt que LIKE : un identifiant peut contenir « _ » ou « % »,
+	// que LIKE interpréterait comme des jokers.
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE device SET reachable = 0 WHERE source = ? AND substr(id, 1, length(?)) = ?`,
+		source, prefix, prefix)
+	if err != nil {
+		return fmt.Errorf("marquage des équipements %s injoignables: %w", prefix, err)
 	}
 	return nil
 }

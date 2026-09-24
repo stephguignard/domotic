@@ -10,7 +10,15 @@ import { TagModule } from '@openng/optimus-ui/tag';
 import { TooltipModule } from '@openng/optimus-ui/tooltip';
 
 import { Device } from '../../api';
-import { commandsFor, isControllable, kindIcon, kindLabel } from '../../core/device-state';
+import {
+  SOURCE_IDS,
+  commandsFor,
+  isControllable,
+  kindIcon,
+  kindLabel,
+  sourceLabel,
+  sourceSeverity,
+} from '../../core/device-state';
 import { DevicesStore } from '../../core/devices.store';
 
 @Component({
@@ -35,14 +43,14 @@ export class DeviceList {
   protected readonly kindIcon = kindIcon;
   protected readonly isControllable = isControllable;
   protected readonly commandsFor = commandsFor;
+  protected readonly sourceSeverity = sourceSeverity;
 
   protected readonly sourceFilter = signal<string | null>(null);
   protected readonly roomFilter = signal<string | null>(null);
 
   protected readonly sourceOptions = [
     { label: 'Toutes les sources', value: null },
-    { label: 'Netatmo', value: 'netatmo' },
-    { label: 'Somfy TaHoma', value: 'tahoma' },
+    ...SOURCE_IDS.map((id) => ({ label: sourceLabel(id), value: id })),
   ];
 
   protected readonly roomOptions = computed(() => [
@@ -80,9 +88,5 @@ export class DeviceList {
     // sur un bouton de commande local à ce bouton.
     event.stopPropagation();
     this.store.sendCommand(device, command);
-  }
-
-  protected sourceSeverity(source: string): 'info' | 'success' {
-    return source === 'netatmo' ? 'info' : 'success';
   }
 }

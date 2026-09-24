@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Contexte
 
 Service d'agrégation domotique : un backend Go consolide les équipements **Netatmo**
-(cloud, OAuth2) et **Somfy TaHoma** (API locale sur le LAN) derrière une API REST
-unifiée, et sert lui-même un frontend Angular embarqué.
+(cloud, OAuth2), **Somfy TaHoma**, **Philips Hue** et **Shelly** (API locales sur le
+LAN) derrière une API REST unifiée, et sert lui-même un frontend Angular embarqué.
 
 La cible de déploiement est un **Synology DS216+** : Celeron N3050, **1 Go de RAM**,
 DSM 7.1. Cette contrainte explique la plupart des choix d'architecture et doit être
@@ -69,8 +69,9 @@ est alors le comportement réel, du décodage de la réponse jusqu'au rendu.
 
 ```
 Netatmo (cloud) ──┐
-                  ├──▶ poller ──▶ SQLite ──▶ API REST ──▶ Angular
-TaHoma (LAN)    ──┘
+TaHoma (LAN)    ──┤
+Hue (LAN)       ──┼──▶ poller ──▶ SQLite ──▶ API REST ──▶ Angular
+Shelly (LAN)    ──┘
 ```
 
 `internal/poller` interroge les sources en tâche de fond et consolide l'état en base ;
@@ -79,8 +80,18 @@ est indisponible, et les quotas d'API ne dépendent pas du nombre d'onglets ouve
 
 **Conséquence pratique :** un endpoint qui aurait besoin d'une donnée fraîche d'une
 source amont doit passer par le poller et la base, pas appeler le client directement.
-La seule exception est `POST /api/devices/{id}/command`, qui traverse vers la box
-TaHoma parce qu'une commande n'a de sens qu'immédiate.
+La seule exception est `POST /api/devices/{id}/command`, qui traverse vers la source
+parce qu'une commande n'a de sens qu'immédiate. Chaque source pilotable implémente
+`command.Commander`, et `Deps.commander()` aiguille selon `device.Source`. Après la
+commande, `Poller.Nudge()` avance le relevé suivant des sources sans flux
+d'événements.
+
+**Ajouter une source** demande une migration qui **reconstruit** la table `device` :
+SQLite ne sait pas modifier le `CHECK` sur `source`. Voir `0003` : la reconstruction
+se fait clés étrangères désactivées, sinon l'`ON DELETE CASCADE` efface tout
+l'historique de `measurement` — `TestSourceMigrationKeepsMeasurements` le vérifie.
+Mettre à jour aussi les `enum` de `store.Device` et `ListDevicesInput`, et
+`SOURCES` dans `frontend/src/app/core/device-state.ts`.
 
 ### Le contrat d'API descend du code Go
 
@@ -170,6 +181,47 @@ Le flux d'événements (`internal/tahoma/events.go`) tolère un listener expiré
 les recycle — en le réenregistrant et en retentant une fois. La box impose **un appel
 par seconde maximum** sur `/events/{id}/fetch` ; `config.validate()` refuse un
 intervalle plus court.
+
+### Hue : certificat sans SAN, seule exception à la règle TLS
+
+Le certificat du pont, signé par la CA privée de Signify (embarquée :
+`internal/hue/hue-root-bridge-ca.crt`), porte l'identifiant du pont dans son **seul
+Common Name**, sans Subject Alternative Name. Depuis Go 1.15, la vérification standard
+du nom d'hôte ignore le CN : aucun `ServerName` ne peut donc faire passer ce
+certificat, contrairement à TaHoma.
+
+`internal/hue/tls.go` pose `InsecureSkipVerify: true` **uniquement pour débrayer
+cette vérification standard**, et la remplace par `VerifyConnection` : chaîne
+jusqu'à la CA embarquée, usage serveur, CN égal à `HUE_BRIDGE_ID` (sans tenir compte
+de la casse). C'est la seule dérogation admise, et elle ne vaut qu'avec ce
+`VerifyConnection` ; les tests `TestTLSRejects*` gardent ce contrat. Ailleurs, la
+règle reste : jamais d'`InsecureSkipVerify`.
+
+La clé d'application s'obtient par `domotic hue-pair` (`make hue-pair`), qui lit
+l'environnement **sans** `config.Load` : celle-ci refuse justement « pont renseigné,
+clé absente ».
+
+Le flux d'événements (`/eventstream/clip/v2`, SSE) n'envoie **aucun signe de vie**.
+`Stream` coupe après 5 min de silence (`ErrIdle`), ce qui est une reconnexion
+normale et non une panne ; toute reconnexion relit l'inventaire. Un événement
+`update` ne porte que les champs modifiés : le poller les **fusionne** dans l'état
+enregistré.
+
+### Shelly : Gen2+ seulement, relevé plutôt que WebSocket
+
+Seule l'API JSON-RPC Gen2+ est prise en charge. Les modules offrent un WebSocket de
+notifications, mais la stdlib n'a pas de client WebSocket : un relevé
+`Shelly.GetStatus` toutes les 5 s (plus un `Nudge` après chaque commande) évite
+cette dépendance. La configuration (noms des voies) n'est relue que toutes les
+15 min.
+
+Un module injoignable fait marquer ses voies injoignables (`MarkUnreachable`) sans
+bloquer les autres modules. L'authentification est un digest **SHA-256** (utilisateur
+`admin`), implémenté dans `internal/shelly/digest.go` et testé contre le vecteur de la
+RFC 7616.
+
+Les voies sont de type `switch`, et le frontend **confirme** toute commande sur ce
+type (`needsConfirmation`) : elles pilotent chauffe-eau et chauffages.
 
 ## Contraintes de déploiement
 

@@ -1,9 +1,9 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { MessageService } from '@openng/optimus-ui/api';
+import { type Confirmation, ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 
 import { DevicesStore } from './devices.store';
-import { makeDevice, makeStation, testProviders } from '../testing/providers';
+import { makeDevice, makeRelay, makeStation, testProviders } from '../testing/providers';
 
 describe('DevicesStore', () => {
   let store: DevicesStore;
@@ -137,5 +137,60 @@ describe('DevicesStore', () => {
         detail: 'les équipements netatmo ne sont pas pilotables',
       }),
     );
+  });
+
+  describe('commandes confirmées', () => {
+    /** Intercepte la demande de confirmation au lieu d'ouvrir le dialogue. */
+    function captureConfirmation(): () => Confirmation {
+      let captured: Confirmation | undefined;
+      vi.spyOn(TestBed.inject(ConfirmationService), 'confirm').mockImplementation(function (
+        this: ConfirmationService,
+        c: Confirmation,
+      ) {
+        captured = c;
+        return this;
+      });
+      return () => {
+        if (!captured) {
+          throw new Error('aucune confirmation demandée');
+        }
+        return captured;
+      };
+    }
+
+    it("n'envoie rien avant confirmation sur un relais", () => {
+      const confirmation = captureConfirmation();
+      const relay = makeRelay();
+
+      load([relay]);
+      store.sendCommand(relay, 'off');
+
+      expect(confirmation().header).toBe('Éteindre « Eau chaude » ?');
+      http.expectNone(`/api/devices/${encodeURIComponent(relay.id)}/command`);
+    });
+
+    it('envoie la commande une fois confirmée', () => {
+      const confirmation = captureConfirmation();
+      const relay = makeRelay();
+
+      load([relay]);
+      store.sendCommand(relay, 'off');
+      confirmation().accept?.();
+
+      const req = http.expectOne(`/api/devices/${encodeURIComponent(relay.id)}/command`);
+      expect(req.request.body).toEqual({ command: 'off', parameters: [] });
+      req.flush({ exec_id: '' });
+    });
+
+    it('ne demande pas de confirmation pour un volet', () => {
+      const confirm = vi.spyOn(TestBed.inject(ConfirmationService), 'confirm');
+      const device = makeDevice();
+
+      load([device]);
+      store.sendCommand(device, 'open');
+
+      expect(confirm).not.toHaveBeenCalled();
+      http.expectOne(`/api/devices/${encodeURIComponent(device.id)}/command`).flush({ exec_id: 'x' });
+    });
   });
 });

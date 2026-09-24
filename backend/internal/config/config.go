@@ -20,6 +20,8 @@ type Config struct {
 
 	Netatmo NetatmoConfig
 	Tahoma  TahomaConfig
+	Shelly  ShellyConfig
+	Hue     HueConfig
 }
 
 // NetatmoConfig porte les paramètres de l'API cloud Netatmo.
@@ -52,6 +54,39 @@ func (c TahomaConfig) Enabled() bool {
 	return c.Host != "" && c.Token != "" && c.PIN != ""
 }
 
+// ShellyConfig porte les paramètres des modules Shelly Gen2+ du réseau local.
+type ShellyConfig struct {
+	// Hosts liste les adresses IP des modules, pour la même raison que
+	// TAHOMA_HOST : mDNS est peu fiable depuis un conteneur Docker.
+	Hosts []string
+	// Password est commun à tous les modules ; vide si l'authentification est
+	// désactivée sur les modules.
+	Password string
+	// PollInterval espace les relevés d'état. Les modules répondent en local
+	// en quelques millisecondes : un intervalle court ne coûte presque rien.
+	PollInterval time.Duration
+}
+
+// Enabled indique si l'intégration Shelly est configurée.
+func (c ShellyConfig) Enabled() bool {
+	return len(c.Hosts) > 0
+}
+
+// HueConfig porte les paramètres du pont Philips Hue local (API v2).
+type HueConfig struct {
+	Host string // adresse IP du pont, pour la même raison que TAHOMA_HOST
+	// BridgeID est l'identifiant du pont, ex. ECB5FAFFFE943A44. Son
+	// certificat TLS est émis à ce nom : il sert à l'authentifier.
+	BridgeID string
+	// AppKey est la clé d'application, obtenue une fois avec `domotic hue-pair`.
+	AppKey string
+}
+
+// Enabled indique si l'intégration Hue est configurée.
+func (c HueConfig) Enabled() bool {
+	return c.Host != "" && c.BridgeID != "" && c.AppKey != ""
+}
+
 // Load lit la configuration depuis l'environnement et la valide.
 func Load() (*Config, error) {
 	cfg := &Config{
@@ -70,6 +105,16 @@ func Load() (*Config, error) {
 			PIN:           envStr("TAHOMA_PIN", ""),
 			Token:         envStr("TAHOMA_TOKEN", ""),
 			EventInterval: envDuration("TAHOMA_EVENT_INTERVAL", 2*time.Second),
+		},
+		Hue: HueConfig{
+			Host:     envStr("HUE_HOST", ""),
+			BridgeID: envStr("HUE_BRIDGE_ID", ""),
+			AppKey:   envStr("HUE_APP_KEY", ""),
+		},
+		Shelly: ShellyConfig{
+			Hosts:        envList("SHELLY_HOSTS"),
+			Password:     envStr("SHELLY_PASSWORD", ""),
+			PollInterval: envDuration("SHELLY_POLL_INTERVAL", 5*time.Second),
 		},
 	}
 
@@ -115,6 +160,24 @@ func (c *Config) validate() error {
 		return fmt.Errorf("TAHOMA_EVENT_INTERVAL doit valoir au moins 1s (valeur: %s)", t.EventInterval)
 	}
 
+	h := c.Hue
+	switch {
+	case h.Enabled(), h.Host == "" && h.BridgeID == "" && h.AppKey == "":
+	case h.Host != "" && h.BridgeID != "":
+		// Le cas le plus probable : le pont est renseigné, l'appairage reste à faire.
+		return fmt.Errorf("HUE_APP_KEY manquant : lancer `domotic hue-pair` pour l'obtenir")
+	default:
+		return fmt.Errorf("HUE_HOST, HUE_BRIDGE_ID et HUE_APP_KEY doivent être fournis ensemble")
+	}
+
+	sh := c.Shelly
+	if !sh.Enabled() && sh.Password != "" {
+		return fmt.Errorf("SHELLY_PASSWORD est renseigné sans SHELLY_HOSTS")
+	}
+	if sh.Enabled() && sh.PollInterval < time.Second {
+		return fmt.Errorf("SHELLY_POLL_INTERVAL doit valoir au moins 1s (valeur: %s)", sh.PollInterval)
+	}
+
 	return nil
 }
 
@@ -129,6 +192,18 @@ func envStr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// envList lit une liste séparée par des virgules, en ignorant les espaces et
+// les éléments vides.
+func envList(key string) []string {
+	var out []string
+	for _, v := range strings.Split(os.Getenv(key), ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func envInt(key string, def int) int {

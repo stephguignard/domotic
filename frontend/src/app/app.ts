@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ButtonModule } from '@openng/optimus-ui/button';
+import { ConfirmDialogModule } from '@openng/optimus-ui/confirmdialog';
 import { TagModule } from '@openng/optimus-ui/tag';
 import { ToastModule } from '@openng/optimus-ui/toast';
 import { ToolbarModule } from '@openng/optimus-ui/toolbar';
@@ -9,7 +10,16 @@ import { DevicesStore } from './core/devices.store';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToolbarModule, ButtonModule, TagModule, ToastModule],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    ToolbarModule,
+    ButtonModule,
+    ConfirmDialogModule,
+    TagModule,
+    ToastModule,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

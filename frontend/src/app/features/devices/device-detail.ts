@@ -19,6 +19,7 @@ import {
   metricLabel,
   metricUnit,
   parseState,
+  sourceSeverity,
 } from '../../core/device-state';
 import { DevicesStore } from '../../core/devices.store';
 
@@ -49,6 +50,7 @@ export class DeviceDetail {
   protected readonly kindIcon = kindIcon;
   protected readonly isControllable = isControllable;
   protected readonly commandsFor = commandsFor;
+  protected readonly sourceSeverity = sourceSeverity;
 
   protected readonly device = signal<Device | null>(null);
   protected readonly error = signal<string | null>(null);

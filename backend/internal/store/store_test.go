@@ -118,6 +118,43 @@ func TestUpdateDeviceStateRejectsUnknownDevice(t *testing.T) {
 	}
 }
 
+func TestMarkUnreachableMatchesPrefixOnly(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+
+	var devices []Device
+	for _, id := range []string{"shellypro3-aa:switch:0", "shellypro3-aa:switch:1", "shellypro3-aab:switch:0"} {
+		d := testDevice(id)
+		d.Source = "shelly"
+		devices = append(devices, d)
+	}
+	if err := s.UpsertDevices(ctx, devices); err != nil {
+		t.Fatalf("UpsertDevices: %v", err)
+	}
+
+	if err := s.MarkUnreachable(ctx, "shelly", "shellypro3-aa:"); err != nil {
+		t.Fatalf("MarkUnreachable: %v", err)
+	}
+
+	want := map[string]bool{
+		"shellypro3-aa:switch:0":  false,
+		"shellypro3-aa:switch:1":  false,
+		"shellypro3-aab:switch:0": true, // préfixe voisin, autre module
+	}
+	for id, reachable := range want {
+		d, err := s.GetDevice(ctx, id)
+		if err != nil {
+			t.Fatalf("GetDevice(%s): %v", id, err)
+		}
+		if d.Reachable != reachable {
+			t.Errorf("%s joignable = %v, attendu %v", id, d.Reachable, reachable)
+		}
+		if d.State != devices[0].State {
+			t.Errorf("%s : l'état ne doit pas être modifié", id)
+		}
+	}
+}
+
 func TestInsertMeasurementsIgnoresDuplicates(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
