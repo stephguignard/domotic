@@ -22,6 +22,7 @@ import {
   sourceSeverity,
 } from '../../core/device-state';
 import { DevicesStore } from '../../core/devices.store';
+import { CommandHistory } from '../history/command-history';
 import { LightControls } from './light-controls';
 
 @Component({
@@ -37,6 +38,7 @@ import { LightControls } from './light-controls';
     MessageModule,
     ProgressSpinnerModule,
     LightControls,
+    CommandHistory,
   ],
   templateUrl: './device-detail.html',
 })

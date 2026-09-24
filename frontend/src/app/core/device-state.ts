@@ -216,6 +216,20 @@ export function lightSettings(device: Device): LightSettings {
   return settings;
 }
 
+/** Décrit une action pour l'historique : « Fermer », « Luminosité à 40 % »… */
+export function actionLabel(kind: string, command: string, parameters: unknown[] = []): string {
+  const [value] = parameters;
+  switch (command) {
+    case 'setBrightness':
+      return `Luminosité à ${value} %`;
+    case 'setColor':
+      return `Couleur ${value}`;
+    case 'setColorTemperature':
+      return `Blanc à ${value} K`;
+  }
+  return commandsFor(kind).find((c) => c.command === command)?.label ?? command;
+}
+
 /** Décrit une commande pour la notification qui confirme son envoi. */
 export function describeCommand(kind: string, command: string, parameters: unknown[] = []): string {
   const [value] = parameters;

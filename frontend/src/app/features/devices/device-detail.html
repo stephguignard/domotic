@@ -73,7 +73,7 @@
       }
     </p-card>
 
-    <p-card header="Historique">
+    <p-card header="Historique des mesures">
       @if (metricOptions().length > 0) {
         <p-select
           [options]="metricOptions()"
@@ -99,6 +99,12 @@
       }
     </p-card>
   </div>
+
+  @if (isControllable(d) || commandsFor(d.kind).length > 0) {
+    <p-card header="Dernières actions" styleClass="mt-4">
+      <app-command-history [deviceId]="d.id" [limit]="50" />
+    </p-card>
+  }
 } @else {
   <div class="flex justify-center py-16">
     <p-progressSpinner ariaLabel="Chargement" />

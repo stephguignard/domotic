@@ -23,6 +23,7 @@ export class DevicesStore {
   private readonly healthSignal = signal<HealthOutputBody | null>(null);
   private readonly loadingSignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
+  private readonly commandsSentSignal = signal(0);
 
   /** Équipements consolidés, toutes sources confondues. */
   readonly devices = this.devicesSignal.asReadonly();
@@ -32,6 +33,11 @@ export class DevicesStore {
   readonly loading = this.loadingSignal.asReadonly();
   /** Message de la dernière erreur de chargement, le cas échéant. */
   readonly error = this.errorSignal.asReadonly();
+  /**
+   * Nombre de commandes abouties — acceptées ou refusées — depuis le
+   * chargement : l'historique s'y abonne pour se relire après chaque action.
+   */
+  readonly commandsSent = this.commandsSentSignal.asReadonly();
 
   /** Pièces représentées, triées. */
   readonly rooms = computed(() => {
@@ -116,6 +122,7 @@ export class DevicesStore {
   private execute(device: Device, command: string, parameters: unknown[]): void {
     this.devicesApi.sendCommand(device.id, { command, parameters }).subscribe({
       next: () => {
+        this.commandsSentSignal.update((n) => n + 1);
         this.messages.add({
           severity: 'success',
           summary: device.name,
@@ -127,6 +134,7 @@ export class DevicesStore {
         setTimeout(() => this.refresh(), 3000);
       },
       error: (err: unknown) => {
+        this.commandsSentSignal.update((n) => n + 1);
         this.messages.add({
           severity: 'error',
           summary: device.name,

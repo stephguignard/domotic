@@ -206,6 +206,9 @@ relais.
 
 ## Dans l'interface
 
+- **Historique** : toutes les commandes envoyées depuis l'interface, réussies
+  ou non, sont conservées un an, sur la page
+  *Historique* et dans la fiche de chaque équipement.
 - **Lumières Hue** : luminosité, blanc (2000 à 6500 K) et couleur se règlent
   depuis la fiche de la lampe.
 

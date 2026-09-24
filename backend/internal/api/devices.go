@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -113,21 +114,10 @@ func registerDevices(api huma.API, d Deps) {
 			return nil, huma.Error500InternalServerError("lecture de l'équipement", err)
 		}
 
-		commander, controllable := d.commander(device.Source)
-		if !controllable {
-			return nil, huma.Error422UnprocessableEntity(
-				"les équipements " + device.Source + " ne sont pas pilotables")
-		}
-		if commander == nil {
-			return nil, huma.Error503ServiceUnavailable("intégration " + device.Source + " non configurée")
-		}
-
-		execID, err := commander.Execute(ctx, device.ID, in.Body.Command, in.Body.Parameters)
-		if errors.Is(err, command.ErrUnsupported) {
-			return nil, huma.Error422UnprocessableEntity(err.Error())
-		}
-		if err != nil {
-			return nil, huma.Error502BadGateway("échec de l'envoi de la commande", err)
+		execID, reason, apiErr := d.execute(ctx, device, in.Body.Command, in.Body.Parameters)
+		d.recordCommand(ctx, device, in.Body.Command, in.Body.Parameters, reason)
+		if apiErr != nil {
+			return nil, apiErr
 		}
 
 		// Sans flux d'événements, la source ne remonterait le nouvel état
@@ -157,4 +147,48 @@ func registerDevices(api huma.API, d Deps) {
 		out.Body.Rooms = rooms
 		return out, nil
 	})
+}
+
+// execute transmet une commande à la source de l'équipement. En cas d'échec,
+// reason porte le motif à consigner dans l'historique, et apiErr la réponse
+// HTTP correspondante.
+func (d Deps) execute(ctx context.Context, device store.Device, cmd string, params []any) (execID, reason string, apiErr error) {
+	commander, controllable := d.commander(device.Source)
+	if !controllable {
+		reason = "les équipements " + device.Source + " ne sont pas pilotables"
+		return "", reason, huma.Error422UnprocessableEntity(reason)
+	}
+	if commander == nil {
+		reason = "intégration " + device.Source + " non configurée"
+		return "", reason, huma.Error503ServiceUnavailable(reason)
+	}
+
+	execID, err := commander.Execute(ctx, device.ID, cmd, params)
+	if errors.Is(err, command.ErrUnsupported) {
+		return "", err.Error(), huma.Error422UnprocessableEntity(err.Error())
+	}
+	if err != nil {
+		return "", err.Error(), huma.Error502BadGateway("échec de l'envoi de la commande", err)
+	}
+	return execID, "", nil
+}
+
+// recordCommand consigne une tentative de commande dans l'historique. Un échec
+// d'écriture est journalisé sans être remonté : la commande est déjà partie,
+// la signaler en erreur inciterait à la renvoyer.
+func (d Deps) recordCommand(ctx context.Context, device store.Device, cmd string, params []any, reason string) {
+	err := d.Store.RecordCommand(ctx, store.CommandLogEntry{
+		DeviceID:   device.ID,
+		DeviceName: device.Name,
+		DeviceKind: device.Kind,
+		Source:     device.Source,
+		Command:    cmd,
+		Parameters: params,
+		Success:    reason == "",
+		Error:      reason,
+		CreatedAt:  time.Now().UTC(),
+	})
+	if err != nil && d.Log != nil {
+		d.Log.Warn("historique de commande non enregistré", "device", device.ID, "command", cmd, "error", err)
+	}
 }
