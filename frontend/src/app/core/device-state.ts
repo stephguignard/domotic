@@ -158,15 +158,38 @@ export function kindIcon(kind: string): string {
   }
 }
 
-/**
- * Indique si un équipement accepte des commandes.
- *
- * Seule la box TaHoma pilote des équipements ; l'API météo Netatmo est en
- * lecture seule, et le backend rejette toute commande qui lui serait adressée.
- */
+/** Sources dont les équipements se pilotent. L'API météo Netatmo est en
+ * lecture seule, et le backend rejette toute commande qui lui serait adressée. */
+const CONTROLLABLE_SOURCES = new Set(['tahoma', 'hue', 'shelly']);
+
+/** Indique si un équipement accepte des commandes. */
 export function isControllable(device: Device): boolean {
-  return device.source === 'tahoma' && device.reachable;
+  return CONTROLLABLE_SOURCES.has(device.source) && device.reachable;
 }
+
+/** Sévérité d'un tag Optimus, telle qu'acceptée par `<p-tag>`. */
+export type TagSeverity = 'info' | 'success' | 'warn' | 'secondary' | 'contrast';
+
+/** Présentation de chaque source : libellé et couleur de son tag. */
+const SOURCES: Record<string, { label: string; severity: TagSeverity }> = {
+  netatmo: { label: 'Netatmo', severity: 'info' },
+  tahoma: { label: 'Somfy TaHoma', severity: 'success' },
+  hue: { label: 'Philips Hue', severity: 'warn' },
+  shelly: { label: 'Shelly', severity: 'contrast' },
+};
+
+/** Retourne le libellé lisible d'une source. */
+export function sourceLabel(source: string): string {
+  return SOURCES[source]?.label ?? source;
+}
+
+/** Retourne la sévérité du tag d'une source. */
+export function sourceSeverity(source: string): TagSeverity {
+  return SOURCES[source]?.severity ?? 'secondary';
+}
+
+/** Sources connues, pour les filtres. */
+export const SOURCE_IDS = Object.keys(SOURCES);
 
 /**
  * Commandes proposées pour un type d'équipement.

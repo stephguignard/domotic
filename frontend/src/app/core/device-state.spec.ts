@@ -1,5 +1,13 @@
 import { Device } from '../api';
-import { commandsFor, formatValue, isControllable, metricLabel, parseState } from './device-state';
+import {
+  commandsFor,
+  formatValue,
+  isControllable,
+  metricLabel,
+  parseState,
+  sourceLabel,
+  sourceSeverity,
+} from './device-state';
 
 function device(overrides: Partial<Device> = {}): Device {
   return {
@@ -80,10 +88,28 @@ describe('isControllable', () => {
     expect(isControllable(device({ reachable: false }))).toBe(false);
   });
 
+  it('accepte les équipements Hue et Shelly joignables', () => {
+    expect(isControllable(device({ source: 'hue', kind: 'light' }))).toBe(true);
+    expect(isControllable(device({ source: 'shelly', kind: 'switch' }))).toBe(true);
+  });
+
   it('refuse les équipements Netatmo', () => {
     // L'API météo Netatmo est en lecture seule ; le backend rejette de toute
     // façon la commande, autant ne pas proposer le bouton.
     expect(isControllable(device({ source: 'netatmo', kind: 'weather_station' }))).toBe(false);
+  });
+});
+
+describe('sourceLabel / sourceSeverity', () => {
+  it('nomme et colore chaque source connue différemment', () => {
+    const ids = ['netatmo', 'tahoma', 'hue', 'shelly'];
+    expect(ids.map(sourceLabel)).toEqual(['Netatmo', 'Somfy TaHoma', 'Philips Hue', 'Shelly']);
+    expect(new Set(ids.map(sourceSeverity)).size).toBe(ids.length);
+  });
+
+  it("retombe sur l'identifiant brut pour une source inconnue", () => {
+    expect(sourceLabel('zwave')).toBe('zwave');
+    expect(sourceSeverity('zwave')).toBe('secondary');
   });
 });
 

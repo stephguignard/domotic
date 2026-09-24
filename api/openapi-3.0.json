@@ -12,7 +12,7 @@
             "type": "string"
           },
           "command": {
-            "description": "Nom de la commande, ex. open, close, setClosure",
+            "description": "Nom de la commande, ex. open, close, on, off, setBrightness",
             "minLength": 1,
             "type": "string"
           },
@@ -39,7 +39,7 @@
             "type": "string"
           },
           "exec_id": {
-            "description": "Identifiant d'exécution attribué par la passerelle",
+            "description": "Identifiant d'exécution attribué par la passerelle, vide si la source n'en attribue pas",
             "type": "string"
           }
         },
@@ -63,7 +63,7 @@
             "type": "string"
           },
           "kind": {
-            "description": "Type d'équipement, ex. weather_station, shutter, camera",
+            "description": "Type d'équipement, ex. weather_station, shutter, light, switch",
             "type": "string"
           },
           "name": {
@@ -82,7 +82,9 @@
             "description": "Source de l'équipement",
             "enum": [
               "netatmo",
-              "tahoma"
+              "tahoma",
+              "hue",
+              "shelly"
             ],
             "type": "string"
           },
@@ -373,7 +375,9 @@
               "description": "Ne retourner que les équipements de cette source",
               "enum": [
                 "netatmo",
-                "tahoma"
+                "tahoma",
+                "hue",
+                "shelly"
               ],
               "type": "string"
             }
@@ -462,7 +466,7 @@
     },
     "/api/devices/{id}/command": {
       "post": {
-        "description": "Transmet une commande à l'équipement. Seuls les équipements TaHoma sont pilotables : l'API Netatmo météo est en lecture seule.",
+        "description": "Transmet une commande à l'équipement. Les équipements TaHoma, Hue et Shelly sont pilotables ; l'API Netatmo météo est en lecture seule.",
         "operationId": "send-command",
         "parameters": [
           {

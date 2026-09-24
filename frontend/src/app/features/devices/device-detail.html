@@ -18,7 +18,7 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <p-tag [value]="d.source" [severity]="d.source === 'netatmo' ? 'info' : 'success'" />
+          <p-tag [value]="d.source" [severity]="sourceSeverity(d.source)" />
           @if (d.reachable) {
             <p-tag value="En ligne" severity="success" />
           } @else {

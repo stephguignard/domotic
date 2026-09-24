@@ -7,12 +7,13 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/stephguignard/domotic/internal/command"
 	"github.com/stephguignard/domotic/internal/store"
 )
 
 // ListDevicesInput porte les filtres de la liste d'équipements.
 type ListDevicesInput struct {
-	Source string `query:"source" enum:"netatmo,tahoma" doc:"Ne retourner que les équipements de cette source"`
+	Source string `query:"source" enum:"netatmo,tahoma,hue,shelly" doc:"Ne retourner que les équipements de cette source"`
 	Room   string `query:"room" doc:"Ne retourner que les équipements de cette pièce"`
 }
 
@@ -38,7 +39,7 @@ type GetDeviceOutput struct {
 type CommandInput struct {
 	ID   string `path:"id" doc:"Identifiant de l'équipement"`
 	Body struct {
-		Command    string `json:"command" minLength:"1" doc:"Nom de la commande, ex. open, close, setClosure"`
+		Command    string `json:"command" minLength:"1" doc:"Nom de la commande, ex. open, close, on, off, setBrightness"`
 		Parameters []any  `json:"parameters,omitempty" doc:"Paramètres de la commande, selon l'équipement"`
 	}
 }
@@ -46,7 +47,7 @@ type CommandInput struct {
 // CommandOutput confirme la prise en compte d'une commande.
 type CommandOutput struct {
 	Body struct {
-		ExecID string `json:"exec_id" doc:"Identifiant d'exécution attribué par la passerelle"`
+		ExecID string `json:"exec_id" doc:"Identifiant d'exécution attribué par la passerelle, vide si la source n'en attribue pas"`
 	}
 }
 
@@ -99,7 +100,7 @@ func registerDevices(api huma.API, d Deps) {
 		Method:      http.MethodPost,
 		Path:        "/api/devices/{id}/command",
 		Summary:     "Envoyer une commande",
-		Description: "Transmet une commande à l'équipement. Seuls les équipements TaHoma sont pilotables : " +
+		Description: "Transmet une commande à l'équipement. Les équipements TaHoma, Hue et Shelly sont pilotables ; " +
 			"l'API Netatmo météo est en lecture seule.",
 		Tags:          []string{"Devices"},
 		DefaultStatus: http.StatusAccepted,
@@ -112,17 +113,27 @@ func registerDevices(api huma.API, d Deps) {
 			return nil, huma.Error500InternalServerError("lecture de l'équipement", err)
 		}
 
-		if device.Source != "tahoma" {
+		commander, controllable := d.commander(device.Source)
+		if !controllable {
 			return nil, huma.Error422UnprocessableEntity(
 				"les équipements " + device.Source + " ne sont pas pilotables")
 		}
-		if d.Tahoma == nil {
-			return nil, huma.Error503ServiceUnavailable("intégration TaHoma non configurée")
+		if commander == nil {
+			return nil, huma.Error503ServiceUnavailable("intégration " + device.Source + " non configurée")
 		}
 
-		execID, err := d.Tahoma.Execute(ctx, device.ID, in.Body.Command, in.Body.Parameters)
+		execID, err := commander.Execute(ctx, device.ID, in.Body.Command, in.Body.Parameters)
+		if errors.Is(err, command.ErrUnsupported) {
+			return nil, huma.Error422UnprocessableEntity(err.Error())
+		}
 		if err != nil {
 			return nil, huma.Error502BadGateway("échec de l'envoi de la commande", err)
+		}
+
+		// Sans flux d'événements, la source ne remonterait le nouvel état
+		// qu'au prochain tour de polling : le demander tout de suite.
+		if d.Poller != nil {
+			d.Poller.Nudge(device.Source)
 		}
 
 		out := &CommandOutput{}

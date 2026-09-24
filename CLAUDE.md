@@ -79,8 +79,18 @@ est indisponible, et les quotas d'API ne dépendent pas du nombre d'onglets ouve
 
 **Conséquence pratique :** un endpoint qui aurait besoin d'une donnée fraîche d'une
 source amont doit passer par le poller et la base, pas appeler le client directement.
-La seule exception est `POST /api/devices/{id}/command`, qui traverse vers la box
-TaHoma parce qu'une commande n'a de sens qu'immédiate.
+La seule exception est `POST /api/devices/{id}/command`, qui traverse vers la source
+parce qu'une commande n'a de sens qu'immédiate. Chaque source pilotable implémente
+`command.Commander`, et `Deps.commander()` aiguille selon `device.Source`. Après la
+commande, `Poller.Nudge()` avance le relevé suivant des sources sans flux
+d'événements.
+
+**Ajouter une source** demande une migration qui **reconstruit** la table `device` :
+SQLite ne sait pas modifier le `CHECK` sur `source`. Voir `0003` : la reconstruction
+se fait clés étrangères désactivées, sinon l'`ON DELETE CASCADE` efface tout
+l'historique de `measurement` — `TestSourceMigrationKeepsMeasurements` le vérifie.
+Mettre à jour aussi les `enum` de `store.Device` et `ListDevicesInput`, et
+`SOURCES` dans `frontend/src/app/core/device-state.ts`.
 
 ### Le contrat d'API descend du code Go
 

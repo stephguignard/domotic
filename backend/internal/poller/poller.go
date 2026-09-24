@@ -47,6 +47,11 @@ type Poller struct {
 
 	mu     sync.RWMutex
 	status map[string]*SourceStatus
+
+	// nudges réveillent la boucle d'une source avant son prochain tour, par
+	// exemple juste après une commande. Tampon d'un élément : plusieurs
+	// demandes rapprochées ne valent qu'un rafraîchissement.
+	nudges map[string]chan struct{}
 }
 
 // New construit un poller. Les clients peuvent être nil si la source
@@ -62,11 +67,25 @@ func New(cfg *config.Config, st *store.Store, nc *netatmo.Client, tc *tahoma.Cli
 			"netatmo": {Enabled: cfg.Netatmo.Enabled()},
 			"tahoma":  {Enabled: cfg.Tahoma.Enabled()},
 		},
+		nudges: map[string]chan struct{}{},
 	}
 	if tc != nil {
 		p.events = tahoma.NewEventListener(tc)
 	}
 	return p
+}
+
+// Nudge demande un rafraîchissement immédiat d'une source. Sans effet pour une
+// source dont l'état arrive déjà par un flux d'événements.
+func (p *Poller) Nudge(source string) {
+	ch := p.nudges[source]
+	if ch == nil {
+		return
+	}
+	select {
+	case ch <- struct{}{}:
+	default: // un rafraîchissement est déjà demandé
+	}
 }
 
 // Status retourne une copie de l'état des sources.
@@ -135,7 +154,7 @@ func (p *Poller) shutdown() {
 
 // runNetatmo rafraîchit les données Netatmo à intervalle régulier.
 func (p *Poller) runNetatmo(ctx context.Context) {
-	p.tick(ctx, p.cfg.Netatmo.PollInterval, func(ctx context.Context) {
+	p.tick(ctx, p.cfg.Netatmo.PollInterval, nil, func(ctx context.Context) {
 		err := p.refreshNetatmo(ctx)
 		p.record("netatmo", err)
 
@@ -180,7 +199,7 @@ func (p *Poller) refreshNetatmo(ctx context.Context) error {
 // d'état arrivent par le flux d'événements ; ce rechargement périodique ne sert
 // qu'à détecter les ajouts, suppressions et renommages d'équipements.
 func (p *Poller) runTahomaSetup(ctx context.Context) {
-	p.tick(ctx, 15*time.Minute, func(ctx context.Context) {
+	p.tick(ctx, 15*time.Minute, nil, func(ctx context.Context) {
 		devices, err := p.tahoma.FetchDevices(ctx)
 		if err == nil {
 			err = p.store.UpsertDevices(ctx, devices)
@@ -269,7 +288,7 @@ func (p *Poller) applyEvents(ctx context.Context, events []tahoma.Event) {
 
 // runRetention purge quotidiennement les relevés trop anciens.
 func (p *Poller) runRetention(ctx context.Context) {
-	p.tick(ctx, 24*time.Hour, func(ctx context.Context) {
+	p.tick(ctx, 24*time.Hour, nil, func(ctx context.Context) {
 		cutoff := time.Now().UTC().Add(-retentionPeriod)
 		n, err := p.store.PurgeMeasurementsBefore(ctx, cutoff)
 		if err != nil {
@@ -283,7 +302,8 @@ func (p *Poller) runRetention(ctx context.Context) {
 }
 
 // tick exécute fn immédiatement puis à chaque intervalle, jusqu'à annulation.
-func (p *Poller) tick(ctx context.Context, interval time.Duration, fn func(context.Context)) {
+// Un signal sur nudge avance le tour suivant ; nil désactive ce réveil.
+func (p *Poller) tick(ctx context.Context, interval time.Duration, nudge <-chan struct{}, fn func(context.Context)) {
 	fn(ctx)
 
 	ticker := time.NewTicker(interval)
@@ -294,7 +314,11 @@ func (p *Poller) tick(ctx context.Context, interval time.Duration, fn func(conte
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			fn(ctx)
+		case <-nudge:
+			// Repartir d'un intervalle plein : le tour anticipé remplace le
+			// prochain plutôt que de s'y ajouter.
+			ticker.Reset(interval)
 		}
+		fn(ctx)
 	}
 }

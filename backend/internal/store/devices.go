@@ -16,9 +16,9 @@ var ErrNotFound = errors.New("introuvable")
 // source. Les tags JSON servent aussi à la génération du schéma OpenAPI.
 type Device struct {
 	ID        string    `json:"id" doc:"Identifiant de l'équipement dans sa source d'origine"`
-	Source    string    `json:"source" enum:"netatmo,tahoma" doc:"Source de l'équipement"`
+	Source    string    `json:"source" enum:"netatmo,tahoma,hue,shelly" doc:"Source de l'équipement"`
 	Name      string    `json:"name" doc:"Nom lisible"`
-	Kind      string    `json:"kind" doc:"Type d'équipement, ex. weather_station, shutter, camera"`
+	Kind      string    `json:"kind" doc:"Type d'équipement, ex. weather_station, shutter, light, switch"`
 	Room      string    `json:"room" doc:"Pièce, si connue"`
 	State     string    `json:"state" doc:"État courant normalisé, encodé en JSON"`
 	Reachable bool      `json:"reachable" doc:"L'équipement répond-il ?"`
