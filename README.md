@@ -213,7 +213,7 @@ relais.
   réussies ou non, et changements de pièce) sont conservées un an, sur la page
   *Historique* et dans la fiche de chaque équipement.
 - **Lumières Hue** : luminosité, blanc (2000 à 6500 K) et couleur se règlent
-  depuis la fiche de la lampe.
+  depuis la fiche de la lampe. Un équipement allumé apparaît dans sa couleur.
 
 ## Commandes
 

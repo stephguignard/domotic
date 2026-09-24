@@ -216,6 +216,42 @@ export function lightSettings(device: Device): LightSettings {
   return settings;
 }
 
+/** Types dont l'état marche/arrêt se lit d'un coup d'œil. */
+const POWERED_KINDS = new Set(['light', 'switch']);
+
+/**
+ * État marche/arrêt d'un équipement : `true` allumé, `false` éteint, `null`
+ * quand la notion ne s'applique pas (volet, capteur) ou que l'état est inconnu.
+ */
+export function powerState(device: Device): boolean | null {
+  if (!POWERED_KINDS.has(device.kind)) {
+    return null;
+  }
+  const on = parseState(device)['on'];
+  return typeof on === 'boolean' ? on : null;
+}
+
+/**
+ * Couleur d'un équipement allumé : celle de la lampe quand elle en a une — un
+ * blanc chaud y apparaît orangé, comme dans la pièce —, sinon une teinte
+ * générique. `null` pour un équipement éteint ou sans état marche/arrêt.
+ */
+export function litColor(device: Device): string | null {
+  if (powerState(device) !== true) {
+    return null;
+  }
+  return lightSettings(device).color ?? 'var(--color-lit)';
+}
+
+/** Halo d'une carte d'équipement allumé, dans sa couleur. */
+export function litGlow(device: Device): string | null {
+  const color = litColor(device);
+  return color
+    ? `0 0 0 2px color-mix(in srgb, ${color} 55%, transparent), ` +
+        `0 6px 20px -6px color-mix(in srgb, ${color} 60%, transparent)`
+    : null;
+}
+
 /** Décrit une action pour l'historique : « Fermer », « Luminosité à 40 % »… */
 export function actionLabel(kind: string, command: string, parameters: unknown[] = []): string {
   const [value] = parameters;

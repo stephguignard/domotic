@@ -18,7 +18,10 @@ import {
   kindLabel,
   metricLabel,
   metricUnit,
+  litColor,
   parseState,
+  powerState,
+  sourceLabel,
   sourceSeverity,
 } from '../../core/device-state';
 import { DevicesStore } from '../../core/devices.store';
@@ -56,6 +59,9 @@ export class DeviceDetail {
   protected readonly kindIcon = kindIcon;
   protected readonly isControllable = isControllable;
   protected readonly commandsFor = commandsFor;
+  protected readonly sourceLabel = sourceLabel;
+  protected readonly powerState = powerState;
+  protected readonly litColor = litColor;
   protected readonly sourceSeverity = sourceSeverity;
 
   /** Équipement chargé à l'ouverture de la page. */

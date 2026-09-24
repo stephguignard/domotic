@@ -5,7 +5,13 @@
     <ng-template #header>
       <div class="flex flex-wrap items-start justify-between gap-4 px-5 pt-5">
         <div class="flex items-center gap-4">
-          <i [class]="kindIcon(d.kind)" class="text-3xl text-primary"></i>
+          <i
+            [class]="kindIcon(d.kind)"
+            class="power-icon text-3xl"
+            [class.text-primary]="powerState(d) === null"
+            [class.text-muted]="powerState(d) === false"
+            [style.color]="litColor(d)"
+          ></i>
           <div>
             <h1 class="text-[1.375rem] font-semibold">{{ d.name }}</h1>
             <div class="mt-1 text-sm text-muted">
@@ -16,7 +22,7 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <p-tag [value]="d.source" [severity]="sourceSeverity(d.source)" />
+          <p-tag [value]="sourceLabel(d.source)" [severity]="sourceSeverity(d.source)" />
           @if (d.reachable) {
             <p-tag value="En ligne" severity="success" />
           } @else {

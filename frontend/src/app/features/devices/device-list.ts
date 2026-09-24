@@ -16,6 +16,8 @@ import {
   isControllable,
   kindIcon,
   kindLabel,
+  litColor,
+  powerState,
   sourceLabel,
   sourceSeverity,
 } from '../../core/device-state';
@@ -43,6 +45,9 @@ export class DeviceList {
   protected readonly kindIcon = kindIcon;
   protected readonly isControllable = isControllable;
   protected readonly commandsFor = commandsFor;
+  protected readonly sourceLabel = sourceLabel;
+  protected readonly powerState = powerState;
+  protected readonly litColor = litColor;
   protected readonly sourceSeverity = sourceSeverity;
 
   protected readonly sourceFilter = signal<string | null>(null);

@@ -53,14 +53,20 @@
       <tr (click)="open(device)" class="device-row cursor-pointer">
         <td>
           <span class="inline-flex items-center gap-2 font-medium">
-            <i [class]="kindIcon(device.kind)" class="text-primary"></i>
+            <i
+              [class]="kindIcon(device.kind)"
+              class="power-icon"
+              [class.text-primary]="powerState(device) === null"
+              [class.text-muted]="powerState(device) === false"
+              [style.color]="litColor(device)"
+            ></i>
             <span>{{ device.name }}</span>
           </span>
         </td>
         <td>{{ kindLabel(device.kind) }}</td>
         <td>{{ device.room || '—' }}</td>
         <td>
-          <p-tag [value]="device.source" [severity]="sourceSeverity(device.source)" />
+          <p-tag [value]="sourceLabel(device.source)" [severity]="sourceSeverity(device.source)" />
         </td>
         <td>
           @if (device.reachable) {

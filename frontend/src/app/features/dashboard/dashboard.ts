@@ -14,7 +14,12 @@ import {
   kindIcon,
   kindLabel,
   metricLabel,
+  litColor,
+  litGlow,
   parseState,
+  powerState,
+  sourceLabel,
+  sourceSeverity,
 } from '../../core/device-state';
 import { DevicesStore } from '../../core/devices.store';
 
@@ -36,6 +41,11 @@ export class Dashboard {
   protected readonly kindIcon = kindIcon;
   protected readonly isControllable = isControllable;
   protected readonly commandsFor = commandsFor;
+  protected readonly sourceLabel = sourceLabel;
+  protected readonly powerState = powerState;
+  protected readonly litColor = litColor;
+  protected readonly litGlow = litGlow;
+  protected readonly sourceSeverity = sourceSeverity;
 
   /**
    * Grandeurs à afficher sur la carte d'un équipement.

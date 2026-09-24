@@ -4,7 +4,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Dashboard } from './dashboard';
 import { Device } from '../../api';
 import { DevicesStore } from '../../core/devices.store';
-import { makeDevice, makeStation, testProviders } from '../../testing/providers';
+import {
+  makeDevice,
+  makeLight,
+  makeRelay,
+  makeStation,
+  testProviders,
+} from '../../testing/providers';
 
 describe('Dashboard', () => {
   let http: HttpTestingController;
@@ -43,7 +49,7 @@ describe('Dashboard', () => {
     return (fixture.nativeElement as HTMLElement).textContent ?? '';
   }
 
-  it('invite à connecter une source quand aucun équipement n\'est remonté', async () => {
+  it("invite à connecter une source quand aucun équipement n'est remonté", async () => {
     const fixture = await render([]);
 
     expect(text(fixture)).toContain('Aucun équipement');
@@ -128,15 +134,42 @@ describe('Dashboard', () => {
     const store = TestBed.inject(DevicesStore);
     store.refresh();
 
-    http.expectOne('/api/devices').flush(
-      { title: 'Internal Server Error', status: 500, detail: 'base indisponible' },
-      { status: 500, statusText: 'Internal Server Error' },
-    );
+    http
+      .expectOne('/api/devices')
+      .flush(
+        { title: 'Internal Server Error', status: 500, detail: 'base indisponible' },
+        { status: 500, statusText: 'Internal Server Error' },
+      );
     http.expectOne('/api/health').flush({ status: 'ok', database: true, sources: {} });
 
     const fixture = TestBed.createComponent(Dashboard);
     await fixture.whenStable();
 
     expect(text(fixture)).toContain('base indisponible');
+  });
+
+  it('indique la source de chaque équipement', async () => {
+    const fixture = await render([makeDevice(), makeStation(), makeLight(), makeRelay()]);
+
+    const tags = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.source-tag')].map(
+      (el) => el.textContent?.trim(),
+    );
+    expect(tags.sort()).toEqual(['Netatmo', 'Philips Hue', 'Shelly', 'Somfy TaHoma']);
+  });
+
+  it("distingue un équipement allumé d'un équipement éteint", async () => {
+    const fixture = await render([
+      makeLight({ id: 'on', name: 'Allumée', state: '{"on":true,"color":"#ffb35c"}' }),
+      makeLight({ id: 'off', name: 'Éteinte', state: '{"on":false,"color":"#ffb35c"}' }),
+    ]);
+
+    const cards = [...(fixture.nativeElement as HTMLElement).querySelectorAll('a')];
+    const lit = cards.find((a) => a.textContent?.includes('Allumée'))!;
+    const dark = cards.find((a) => a.textContent?.includes('Éteinte'))!;
+
+    expect(lit.classList).toContain('lit');
+    expect(lit.querySelector<HTMLElement>('.power-icon')?.style.color).toBe('rgb(255, 179, 92)');
+    expect(dark.classList).not.toContain('lit');
+    expect(dark.querySelector('.power-icon')?.classList).toContain('text-muted');
   });
 });

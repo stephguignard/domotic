@@ -5,9 +5,12 @@ import {
   formatValue,
   isControllable,
   lightSettings,
+  litColor,
+  litGlow,
   metricLabel,
   needsConfirmation,
   parseState,
+  powerState,
   sourceLabel,
   sourceSeverity,
 } from './device-state';
@@ -181,5 +184,29 @@ describe('describeCommand', () => {
   it('reprend le libellé du bouton pour les commandes simples', () => {
     expect(describeCommand('shutter', 'close')).toBe('Commande « Fermer » envoyée');
     expect(describeCommand('shutter', 'inconnue')).toBe('Commande « inconnue » envoyée');
+  });
+});
+
+describe('powerState / litColor', () => {
+  const light = (state: string) => device({ source: 'hue', kind: 'light', state });
+
+  it("lit l'état marche/arrêt des lumières et des relais seulement", () => {
+    expect(powerState(light('{"on":true}'))).toBe(true);
+    expect(powerState(device({ source: 'shelly', kind: 'switch', state: '{"on":false}' }))).toBe(
+      false,
+    );
+    expect(powerState(device({ kind: 'shutter', state: '{"on":true}' }))).toBeNull();
+    expect(powerState(light('{}'))).toBeNull();
+  });
+
+  it('colore un équipement allumé de sa propre couleur, sinon de la teinte générique', () => {
+    expect(litColor(light('{"on":true,"color":"#ffb35c"}'))).toBe('#ffb35c');
+    expect(litColor(light('{"on":true}'))).toBe('var(--color-lit)');
+    expect(litColor(light('{"on":false,"color":"#ffb35c"}'))).toBeNull();
+  });
+
+  it("n'entoure d'un halo que les équipements allumés", () => {
+    expect(litGlow(light('{"on":true,"color":"#ff0000"}'))).toContain('#ff0000');
+    expect(litGlow(light('{"on":false}'))).toBeNull();
   });
 });

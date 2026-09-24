@@ -35,19 +35,34 @@
         @for (device of group.devices; track device.id) {
           <a
             [routerLink]="['/devices', device.id]"
-            class="block rounded-xl text-inherit no-underline transition-transform hover:-translate-y-0.5
+            [style.box-shadow]="litGlow(device)"
+            [class.lit]="powerState(device) === true"
+            class="block rounded-xl text-inherit no-underline transition hover:-translate-y-0.5
                    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             <p-card>
               <ng-template #header>
                 <div class="flex items-center justify-between gap-2 px-5 pt-4">
                   <span class="inline-flex min-w-0 items-center gap-2 font-semibold">
-                    <i [class]="kindIcon(device.kind)" class="shrink-0 text-primary"></i>
+                    <i
+                      [class]="kindIcon(device.kind)"
+                      class="power-icon shrink-0"
+                      [class.text-primary]="powerState(device) === null"
+                      [class.text-muted]="powerState(device) === false"
+                      [style.color]="litColor(device)"
+                    ></i>
                     <span class="truncate">{{ device.name }}</span>
                   </span>
-                  @if (!device.reachable) {
-                    <p-tag value="Hors ligne" severity="danger" />
-                  }
+                  <span class="inline-flex shrink-0 gap-1">
+                    <p-tag
+                      class="source-tag"
+                      [value]="sourceLabel(device.source)"
+                      [severity]="sourceSeverity(device.source)"
+                    />
+                    @if (!device.reachable) {
+                      <p-tag value="Hors ligne" severity="danger" />
+                    }
+                  </span>
                 </div>
               </ng-template>
 
