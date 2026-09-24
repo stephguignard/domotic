@@ -90,8 +90,22 @@ d'événements.
 SQLite ne sait pas modifier le `CHECK` sur `source`. Voir `0003` : la reconstruction
 se fait clés étrangères désactivées, sinon l'`ON DELETE CASCADE` efface tout
 l'historique de `measurement` — `TestSourceMigrationKeepsMeasurements` le vérifie.
-Mettre à jour aussi les `enum` de `store.Device` et `ListDevicesInput`, et
-`SOURCES` dans `frontend/src/app/core/device-state.ts`.
+Mettre à jour aussi les `enum` de `store.Device`, `store.CommandLogEntry` et
+`ListDevicesInput`, et `SOURCES` dans `frontend/src/app/core/device-state.ts`. La
+reconstruction doit reprendre **toutes** les colonnes, `room_override` (0005)
+comprise.
+
+**Pièce choisie dans l'interface.** `room` est réécrite à chaque cycle par la
+source ; le choix de l'utilisateur vit dans `room_override` (NULL : suivre la
+source, chaîne vide : sans pièce), et les lectures exposent
+`COALESCE(room_override, room)`. Ne jamais faire écrire la pièce effective par
+`UpsertDevices` : elle deviendrait la pièce de la source.
+
+**Historique des actions.** Toute action faite depuis l'interface — commande,
+réussie ou refusée, et changement de pièce — est consignée dans `command_log`
+(`Deps.recordCommand`), sans clé étrangère vers `device` pour survivre à la
+disparition d'un équipement. Seul cas où un handler **écrit** en base : ces
+données naissent dans le service, pas chez une source. Rétention : un an.
 
 ### Le contrat d'API descend du code Go
 
@@ -222,6 +236,31 @@ RFC 7616.
 
 Les voies sont de type `switch`, et le frontend **confirme** toute commande sur ce
 type (`needsConfirmation`) : elles pilotent chauffe-eau et chauffages.
+
+### Scènes et horaires
+
+Une **scène** est une suite d'étapes (action sur des équipements et/ou des pièces,
+ou attente) ; ses **horaires** la lancent. Un horaire déclenche toujours une scène,
+jamais une action isolée. Le moteur (`internal/scenes`) est une goroutine qui dort
+jusqu'à la prochaine échéance ; chaque exécution a la sienne.
+
+Règles à préserver, chacune choisie explicitement :
+
+- **Commandes via `control.Controller`**, comme l'interface : même historique, avec
+  l'origine (`scene_manual`, `scene_schedule`) et le nom de la scène.
+- **Pièces résolues au lancement** (`Resolve`), équipements incompatibles écartés
+  sans erreur. L'aperçu de l'éditeur appelle le même `Resolve`.
+- **Relancer une scène annule l'exécution en cours** ; le dernier ordre l'emporte.
+- **Une action en échec est retentée une fois après 30 s**, sans retarder la suite ;
+  un refus définitif (`ErrUnsupported`, source non configurée) ne l'est pas.
+- **Rattrapage** d'une échéance manquée de moins de 5 min, jamais au-delà.
+- **Arrêt du service** : les exécutions en cours sont marquées `interrupted`, leurs
+  étapes restantes abandonnées. `main.go` attend le moteur **avant** de fermer la base.
+- Heures en **heure locale** de `DOMOTIC_TIMEZONE` (base de fuseaux embarquée par
+  `time/tzdata`, absente de l'image distroless). Soleil : `solar.go`, vérifié contre
+  l'US Naval Observatory ; la correction `deltaT` (~69 s) n'est pas facultative.
+- Les relais Shelly restent programmés **sur le module** pour le chauffage et l'eau
+  chaude : ces programmations tournent même NAS éteint. L'éditeur le rappelle.
 
 ## Contraintes de déploiement
 

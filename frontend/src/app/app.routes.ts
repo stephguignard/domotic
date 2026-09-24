@@ -18,5 +18,15 @@ export const routes: Routes = [
     title: 'Équipement — Domotic',
     loadComponent: () => import('./features/devices/device-detail').then((m) => m.DeviceDetail),
   },
+  {
+    path: 'scenes',
+    title: 'Scènes — Domotic',
+    loadComponent: () => import('./features/scenes/scenes-page').then((m) => m.ScenesPage),
+  },
+  {
+    path: 'history',
+    title: 'Historique — Domotic',
+    loadComponent: () => import('./features/history/history-page').then((m) => m.HistoryPage),
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

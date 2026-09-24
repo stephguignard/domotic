@@ -14,9 +14,16 @@ import {
   kindIcon,
   kindLabel,
   metricLabel,
+  litColor,
+  litGlow,
   parseState,
+  powerState,
+  sourceLabel,
+  sourceSeverity,
 } from '../../core/device-state';
 import { DevicesStore } from '../../core/devices.store';
+import { ScenesStore } from '../../core/scenes.store';
+import { RoomOrder } from './room-order';
 
 /** Une grandeur prête à afficher sur une carte. */
 interface Reading {
@@ -26,16 +33,34 @@ interface Reading {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, CardModule, ButtonModule, TagModule, MessageModule, ProgressSpinnerModule],
+  imports: [
+    RouterLink,
+    CardModule,
+    ButtonModule,
+    TagModule,
+    MessageModule,
+    ProgressSpinnerModule,
+    RoomOrder,
+  ],
   templateUrl: './dashboard.html',
 })
 export class Dashboard {
   protected readonly store = inject(DevicesStore);
+  protected readonly scenes = inject(ScenesStore);
+
+  constructor() {
+    this.scenes.load();
+  }
 
   protected readonly kindLabel = kindLabel;
   protected readonly kindIcon = kindIcon;
   protected readonly isControllable = isControllable;
   protected readonly commandsFor = commandsFor;
+  protected readonly sourceLabel = sourceLabel;
+  protected readonly powerState = powerState;
+  protected readonly litColor = litColor;
+  protected readonly litGlow = litGlow;
+  protected readonly sourceSeverity = sourceSeverity;
 
   /**
    * Grandeurs à afficher sur la carte d'un équipement.

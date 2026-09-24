@@ -1,0 +1,56 @@
+@let d = device();
+@if (!editing()) {
+  <span class="room-display inline-flex items-center gap-1">
+    {{ d.room || 'Sans pièce' }}
+    <p-button
+      icon="pi pi-pencil"
+      severity="secondary"
+      size="small"
+      [text]="true"
+      [rounded]="true"
+      ariaLabel="Changer de pièce"
+      (onClick)="editing.set(true)"
+    />
+  </span>
+} @else {
+  <form
+    class="room-form mt-2 flex flex-wrap items-center gap-2"
+    (submit)="$event.preventDefault(); save(room.value)"
+  >
+    <input
+      #room
+      name="room"
+      list="known-rooms"
+      maxlength="64"
+      [value]="d.room"
+      placeholder="Sans pièce"
+      class="h-9 w-48 rounded-content border border-divider bg-content px-3 text-sm text-body"
+      (keydown.escape)="editing.set(false)"
+    />
+    <datalist id="known-rooms">
+      @for (r of store.rooms(); track r) {
+        <option [value]="r"></option>
+      }
+    </datalist>
+    <p-button type="submit" label="Enregistrer" size="small" />
+    <p-button
+      label="Annuler"
+      size="small"
+      severity="secondary"
+      [text]="true"
+      (onClick)="editing.set(false)"
+    />
+    @if (d.room_overridden) {
+      <p-button
+        class="reset-room"
+        size="small"
+        severity="secondary"
+        [outlined]="true"
+        [label]="
+          d.source_room ? 'Revenir à « ' + d.source_room + ' »' : 'Revenir à la source (sans pièce)'
+        "
+        (onClick)="reset()"
+      />
+    }
+  </form>
+}

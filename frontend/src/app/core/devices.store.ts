@@ -2,7 +2,8 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 
 import { Device, DevicesService, HealthOutputBody, HealthService } from '../api';
-import { commandsFor, needsConfirmation } from './device-state';
+import { NO_ROOM, commandsFor, describeCommand, needsConfirmation, sortRooms } from './device-state';
+import { describeError } from './errors';
 
 /**
  * État partagé des équipements.
@@ -23,6 +24,8 @@ export class DevicesStore {
   private readonly healthSignal = signal<HealthOutputBody | null>(null);
   private readonly loadingSignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
+  private readonly commandsSentSignal = signal(0);
+  private readonly roomOrderSignal = signal<string[]>([]);
 
   /** Équipements consolidés, toutes sources confondues. */
   readonly devices = this.devicesSignal.asReadonly();
@@ -32,18 +35,25 @@ export class DevicesStore {
   readonly loading = this.loadingSignal.asReadonly();
   /** Message de la dernière erreur de chargement, le cas échéant. */
   readonly error = this.errorSignal.asReadonly();
+  /**
+   * Nombre de commandes abouties — acceptées ou refusées — depuis le
+   * chargement : l'historique s'y abonne pour se relire après chaque action.
+   */
+  readonly commandsSent = this.commandsSentSignal.asReadonly();
+  /** Pièces classées par l'utilisateur, dans son ordre. */
+  readonly roomOrder = this.roomOrderSignal.asReadonly();
 
-  /** Pièces représentées, triées. */
+  /** Pièces représentées, dans l'ordre d'affichage. */
   readonly rooms = computed(() => {
     const names = new Set(this.devicesSignal().map((d) => d.room).filter((r) => r !== ''));
-    return [...names].sort((a, b) => a.localeCompare(b, 'fr'));
+    return sortRooms([...names], this.roomOrderSignal());
   });
 
-  /** Équipements groupés par pièce, les équipements sans pièce en dernier. */
+  /** Équipements groupés par pièce, dans l'ordre d'affichage, sans pièce en dernier. */
   readonly byRoom = computed(() => {
     const groups = new Map<string, Device[]>();
     for (const device of this.devicesSignal()) {
-      const key = device.room || 'Sans pièce';
+      const key = device.room || NO_ROOM;
       const group = groups.get(key);
       if (group) {
         group.push(device);
@@ -51,13 +61,10 @@ export class DevicesStore {
         groups.set(key, [device]);
       }
     }
-    return [...groups.entries()]
-      .sort(([a], [b]) => {
-        if (a === 'Sans pièce') return 1;
-        if (b === 'Sans pièce') return -1;
-        return a.localeCompare(b, 'fr');
-      })
-      .map(([room, devices]) => ({ room, devices }));
+    return sortRooms([...groups.keys()], this.roomOrderSignal()).map((room) => ({
+      room,
+      devices: groups.get(room)!,
+    }));
   });
 
   /** Nombre d'équipements injoignables. */
@@ -79,6 +86,13 @@ export class DevicesStore {
         this.errorSignal.set(describeError(err));
         this.loadingSignal.set(false);
       },
+    });
+
+    // L'ordre des pièces est relu à chaque fois : il a pu changer depuis un
+    // autre navigateur. Son échec laisse l'ordre alphabétique, sans alerte.
+    this.devicesApi.getRoomOrder().subscribe({
+      next: (order) => this.roomOrderSignal.set(order.rooms),
+      error: () => undefined,
     });
 
     // L'état de santé est secondaire : son échec ne doit pas masquer les
@@ -104,7 +118,7 @@ export class DevicesStore {
       header: `${label} « ${device.name} » ?`,
       message:
         'Cette commande agit sur une installation électrique. ' +
-        "Si un interrupteur physique est relié au module, il reprendra la main à son prochain changement.",
+        'Si un interrupteur physique est relié au module, il reprendra la main à son prochain changement.',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: label,
       rejectLabel: 'Annuler',
@@ -113,18 +127,25 @@ export class DevicesStore {
     });
   }
 
-  private execute(device: Device, command: string, parameters: unknown[]): void {
-    this.devicesApi.sendCommand(device.id, { command, parameters }).subscribe({
-      next: () => {
+  /**
+   * Range un équipement dans une pièce ; `null` rétablit celle de sa source.
+   * Le choix est consigné dans l'historique, comme une commande.
+   */
+  setRoom(device: Device, room: string | null): void {
+    const request =
+      room === null
+        ? this.devicesApi.resetDeviceRoom(device.id)
+        : this.devicesApi.setDeviceRoom(device.id, { room });
+
+    request.subscribe({
+      next: (updated) => {
+        this.devicesSignal.update((all) => all.map((d) => (d.id === updated.id ? updated : d)));
+        this.commandsSentSignal.update((n) => n + 1);
         this.messages.add({
           severity: 'success',
           summary: device.name,
-          detail: `Commande « ${command} » envoyée`,
+          detail: updated.room ? `Rangé dans « ${updated.room} »` : 'Rangé sans pièce',
         });
-
-        // Les sources exécutent la commande de façon asynchrone ; laisser au
-        // backend le temps de consolider le nouvel état avant de relire.
-        setTimeout(() => this.refresh(), 3000);
       },
       error: (err: unknown) => {
         this.messages.add({
@@ -136,23 +157,47 @@ export class DevicesStore {
       },
     });
   }
-}
 
-/** Extrait un message lisible d'une erreur HTTP. */
-function describeError(err: unknown): string {
-  if (typeof err === 'object' && err !== null) {
-    // Le backend renvoie du RFC 7807 : le champ `detail` porte le message utile.
-    const body = (err as { error?: { detail?: string; title?: string } }).error;
-    if (body?.detail) {
-      return body.detail;
-    }
-    if (body?.title) {
-      return body.title;
-    }
-    const message = (err as { message?: string }).message;
-    if (message) {
-      return message;
-    }
+  /** Enregistre l'ordre des pièces ; une liste vide revient à l'ordre alphabétique. */
+  saveRoomOrder(rooms: string[]): void {
+    this.devicesApi.setRoomOrder({ rooms }).subscribe({
+      next: (order) => {
+        this.roomOrderSignal.set(order.rooms);
+        this.messages.add({
+          severity: 'success',
+          summary: 'Pièces',
+          detail: order.rooms.length ? 'Ordre des pièces enregistré' : 'Pièces rangées par ordre alphabétique',
+        });
+      },
+      error: (err: unknown) => {
+        this.messages.add({ severity: 'error', summary: 'Pièces', detail: describeError(err), life: 8000 });
+      },
+    });
   }
-  return 'Erreur inattendue';
+
+  private execute(device: Device, command: string, parameters: unknown[]): void {
+    this.devicesApi.sendCommand(device.id, { command, parameters }).subscribe({
+      next: () => {
+        this.commandsSentSignal.update((n) => n + 1);
+        this.messages.add({
+          severity: 'success',
+          summary: device.name,
+          detail: describeCommand(device.kind, command, parameters),
+        });
+
+        // Les sources exécutent la commande de façon asynchrone ; laisser au
+        // backend le temps de consolider le nouvel état avant de relire.
+        setTimeout(() => this.refresh(), 3000);
+      },
+      error: (err: unknown) => {
+        this.commandsSentSignal.update((n) => n + 1);
+        this.messages.add({
+          severity: 'error',
+          summary: device.name,
+          detail: describeError(err),
+          life: 8000,
+        });
+      },
+    });
+  }
 }

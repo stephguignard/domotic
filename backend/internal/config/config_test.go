@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,9 +22,13 @@ func isolate(t *testing.T) {
 		"TAHOMA_HOST", "TAHOMA_PORT", "TAHOMA_PIN", "TAHOMA_TOKEN", "TAHOMA_EVENT_INTERVAL",
 		"SHELLY_HOSTS", "SHELLY_PASSWORD", "SHELLY_POLL_INTERVAL",
 		"HUE_HOST", "HUE_BRIDGE_ID", "HUE_APP_KEY",
+		"DOMOTIC_TIMEZONE", "DOMOTIC_LATITUDE", "DOMOTIC_LONGITUDE",
 	} {
 		t.Setenv(key, "")
 	}
+	// Le fuseau par défaut vient de la machine : le figer rend les tests
+	// indépendants de celle qui les exécute.
+	t.Setenv("TZ", "UTC")
 }
 
 func TestLoadDefaults(t *testing.T) {
@@ -197,5 +203,87 @@ func TestHuePartialConfig(t *testing.T) {
 				t.Errorf("erreur = %v, attendu une erreur contenant %q", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestLocation(t *testing.T) {
+	isolate(t)
+	t.Setenv("DOMOTIC_TIMEZONE", "Europe/Zurich")
+	t.Setenv("DOMOTIC_LATITUDE", "46.52")
+	t.Setenv("DOMOTIC_LONGITUDE", "6.63")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	l := cfg.Location
+	if l.TimeZone.String() != "Europe/Zurich" || !l.HasCoordinates || l.Latitude != 46.52 || l.Longitude != 6.63 {
+		t.Errorf("emplacement = %+v", l)
+	}
+}
+
+func TestLocationDefaultsAndErrors(t *testing.T) {
+	isolate(t)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Location.TimeZone != time.UTC || cfg.Location.HasCoordinates {
+		t.Errorf("par défaut : %+v", cfg.Location)
+	}
+
+	for name, env := range map[string]map[string]string{
+		"fuseau inconnu":      {"DOMOTIC_TIMEZONE": "Mars/Olympus"},
+		"latitude seule":      {"DOMOTIC_LATITUDE": "46.5"},
+		"latitude hors plage": {"DOMOTIC_LATITUDE": "95", "DOMOTIC_LONGITUDE": "6"},
+		"longitude illisible": {"DOMOTIC_LATITUDE": "46", "DOMOTIC_LONGITUDE": "est"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			isolate(t)
+			for k, v := range env {
+				t.Setenv(k, v)
+			}
+			if _, err := Load(); err == nil {
+				t.Error("attendu une erreur")
+			}
+		})
+	}
+}
+
+func TestTimeZoneDefaultsToSystemZone(t *testing.T) {
+	isolate(t)
+
+	t.Setenv("TZ", "Europe/Paris")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := cfg.Location.TimeZone.String(); got != "Europe/Paris" {
+		t.Errorf("fuseau depuis TZ = %s", got)
+	}
+
+	// Sans TZ : la cible du lien /etc/localtime.
+	t.Setenv("TZ", "")
+	link := filepath.Join(t.TempDir(), "localtime")
+	if err := os.Symlink("/usr/share/zoneinfo/Europe/Zurich", link); err != nil {
+		t.Fatal(err)
+	}
+	localtimePath = link
+	t.Cleanup(func() { localtimePath = "/etc/localtime" })
+	if got := systemZoneName(); got != "Europe/Zurich" {
+		t.Errorf("fuseau depuis /etc/localtime = %s", got)
+	}
+
+	// Ni l'un ni l'autre, comme dans l'image distroless : UTC.
+	localtimePath = filepath.Join(t.TempDir(), "absent")
+	if got := systemZoneName(); got != "UTC" {
+		t.Errorf("fuseau sans indice = %s", got)
+	}
+
+	// DOMOTIC_TIMEZONE l'emporte sur la machine.
+	t.Setenv("TZ", "Europe/Paris")
+	t.Setenv("DOMOTIC_TIMEZONE", "America/New_York")
+	if cfg, _ := Load(); cfg.Location.TimeZone.String() != "America/New_York" {
+		t.Errorf("DOMOTIC_TIMEZONE ignorée : %s", cfg.Location.TimeZone)
 	}
 }

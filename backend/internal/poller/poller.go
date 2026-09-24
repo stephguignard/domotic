@@ -28,6 +28,11 @@ import (
 // peser sans bénéfice pour un usage domestique.
 const retentionPeriod = 90 * 24 * time.Hour
 
+// commandRetention borne l'historique des actions. Quelques lignes par jour
+// au plus : une année reste négligeable et permet de retrouver un réglage
+// saisonnier.
+const commandRetention = 365 * 24 * time.Hour
+
 // SourceStatus résume l'état d'une source pour l'endpoint de santé.
 //
 // LastSuccess est un pointeur : encoding/json ne considère pas un time.Time
@@ -479,7 +484,7 @@ func (p *Poller) mergeHueState(ctx context.Context, r hue.EventResource, at time
 	}
 }
 
-// runRetention purge quotidiennement les relevés trop anciens.
+// runRetention purge quotidiennement les relevés et les actions trop anciens.
 func (p *Poller) runRetention(ctx context.Context) {
 	p.tick(ctx, 24*time.Hour, nil, func(ctx context.Context) {
 		cutoff := time.Now().UTC().Add(-retentionPeriod)
@@ -490,6 +495,16 @@ func (p *Poller) runRetention(ctx context.Context) {
 		}
 		if n > 0 {
 			p.log.Info("relevés purgés", "rows", n, "before", cutoff)
+		}
+
+		cutoff = time.Now().UTC().Add(-commandRetention)
+		n, err = p.store.PurgeCommandsBefore(ctx, cutoff)
+		if err != nil {
+			p.log.Error("purge de l'historique des actions", "error", err)
+			return
+		}
+		if n > 0 {
+			p.log.Info("historique des actions purgé", "rows", n, "before", cutoff)
 		}
 	})
 }

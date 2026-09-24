@@ -1,12 +1,18 @@
 import { Device } from '../api';
 import {
   commandsFor,
+  describeCommand,
   formatValue,
   isControllable,
+  lightSettings,
+  litColor,
+  litGlow,
   metricLabel,
   needsConfirmation,
   parseState,
+  powerState,
   sourceLabel,
+  sortRooms,
   sourceSeverity,
 } from './device-state';
 
@@ -17,6 +23,8 @@ function device(overrides: Partial<Device> = {}): Device {
     name: 'Volet salon',
     kind: 'shutter',
     room: 'Salon',
+    source_room: 'Salon',
+    room_overridden: false,
     state: '{}',
     reachable: true,
     updated_at: new Date().toISOString(),
@@ -133,5 +141,98 @@ describe('needsConfirmation', () => {
     expect(needsConfirmation(device({ source: 'shelly', kind: 'switch' }))).toBe(true);
     expect(needsConfirmation(device({ source: 'hue', kind: 'light' }))).toBe(false);
     expect(needsConfirmation(device())).toBe(false);
+  });
+});
+
+describe('lightSettings', () => {
+  const light = (state: string) => device({ source: 'hue', kind: 'light', state });
+
+  it('expose les réglages que la lampe sait faire', () => {
+    expect(
+      lightSettings(
+        light('{"on":true,"brightness":57,"color":"#ffb35c","color_temperature":2240}'),
+      ),
+    ).toEqual({
+      brightness: 57,
+      color: '#ffb35c',
+      colorTemperature: 2240,
+    });
+  });
+
+  it("distingue une lampe réglée sur une couleur d'une lampe sans blancs", () => {
+    expect(
+      lightSettings(light('{"color":"#ff0000","color_temperature":null}')).colorTemperature,
+    ).toBeNull();
+    expect('colorTemperature' in lightSettings(light('{"color":"#ff0000"}'))).toBe(false);
+  });
+
+  it('ne propose rien pour une prise ou un autre type', () => {
+    expect(lightSettings(light('{"on":false}'))).toEqual({});
+    expect(lightSettings(device({ kind: 'shutter', state: '{"brightness":50}' }))).toEqual({});
+  });
+
+  it('écarte une couleur mal formée', () => {
+    expect(lightSettings(light('{"color":"rouge"}')).color).toBeUndefined();
+  });
+});
+
+describe('describeCommand', () => {
+  it('décrit les réglages avec leur valeur', () => {
+    expect(describeCommand('light', 'setBrightness', [40])).toBe('Luminosité réglée à 40 %');
+    expect(describeCommand('light', 'setColorTemperature', [2700])).toBe('Blanc réglé à 2700 K');
+  });
+
+  it('reprend le libellé du bouton pour les commandes simples', () => {
+    expect(describeCommand('shutter', 'close')).toBe('Commande « Fermer » envoyée');
+    expect(describeCommand('shutter', 'inconnue')).toBe('Commande « inconnue » envoyée');
+  });
+});
+
+describe('powerState / litColor', () => {
+  const light = (state: string) => device({ source: 'hue', kind: 'light', state });
+
+  it("lit l'état marche/arrêt des lumières et des relais seulement", () => {
+    expect(powerState(light('{"on":true}'))).toBe(true);
+    expect(powerState(device({ source: 'shelly', kind: 'switch', state: '{"on":false}' }))).toBe(
+      false,
+    );
+    expect(powerState(device({ kind: 'shutter', state: '{"on":true}' }))).toBeNull();
+    expect(powerState(light('{}'))).toBeNull();
+  });
+
+  it('colore un équipement allumé de sa propre couleur, sinon de la teinte générique', () => {
+    expect(litColor(light('{"on":true,"color":"#ffb35c"}'))).toBe('#ffb35c');
+    expect(litColor(light('{"on":true}'))).toBe('var(--color-lit)');
+    expect(litColor(light('{"on":false,"color":"#ffb35c"}'))).toBeNull();
+  });
+
+  it("n'entoure d'un halo que les équipements allumés", () => {
+    expect(litGlow(light('{"on":true,"color":"#ff0000"}'))).toContain('#ff0000');
+    expect(litGlow(light('{"on":false}'))).toBeNull();
+  });
+});
+
+describe('sortRooms', () => {
+  it("place les pièces classées dans l'ordre choisi, puis les autres par ordre alphabétique", () => {
+    const rooms = ['Salon', 'Bureau', 'Étage', 'Cuisine', 'Sans pièce', 'Lily'];
+    expect(sortRooms(rooms, ['Lily', 'Cuisine'])).toEqual([
+      'Lily',
+      'Cuisine',
+      'Bureau',
+      'Étage',
+      'Salon',
+      'Sans pièce',
+    ]);
+  });
+
+  it('garde « Sans pièce » en dernier même si elle a été classée', () => {
+    expect(sortRooms(['Sans pièce', 'Salon'], ['Sans pièce', 'Salon'])).toEqual([
+      'Salon',
+      'Sans pièce',
+    ]);
+  });
+
+  it('ignore les pièces classées qui ne sont plus représentées', () => {
+    expect(sortRooms(['Salon'], ['Grenier', 'Salon'])).toEqual(['Salon']);
   });
 });

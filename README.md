@@ -204,6 +204,26 @@ Côté module, penser à **désactiver le point d'accès Wi-Fi** (`Wi-Fi > Acces
 Point`) : ouvert par défaut, il permet à quiconque à portée de piloter les
 relais.
 
+## Dans l'interface
+
+- **Pièces** : chaque équipement peut être rangé dans une pièce depuis sa fiche,
+  indépendamment de sa source — utile pour TaHoma et Shelly, dont l'API locale
+  n'en fournit pas. Le choix survit aux rafraîchissements et se défait d'un clic.
+  L'ordre des pièces du tableau de bord se choisit avec *Organiser les pièces* ;
+  une pièce jamais classée s'affiche après les autres, par ordre alphabétique.
+- **Historique** : toutes les actions faites depuis l'interface (commandes,
+  réussies ou non, et changements de pièce) sont conservées un an, sur la page
+  *Historique* et dans la fiche de chaque équipement.
+- **Scènes** : une scène enchaîne des actions (allumer, éteindre, ouvrir, fermer,
+  luminosité, blanc, couleur) et des attentes, sur des équipements ou des pièces.
+  Elle se lance d'un bouton sur le tableau de bord, ou par ses horaires : jours de
+  la semaine, à heure fixe ou au lever/coucher du soleil (± décalage, bornes
+  facultatives). Renseigner `DOMOTIC_TIMEZONE`, et `DOMOTIC_LATITUDE` /
+  `DOMOTIC_LONGITUDE` pour les horaires solaires. *Organiser les scènes* règle
+  leur ordre, sur la page Scènes comme sur le tableau de bord.
+- **Lumières Hue** : luminosité, blanc (2000 à 6500 K) et couleur se règlent
+  depuis la fiche de la lampe. Un équipement allumé apparaît dans sa couleur.
+
 ## Commandes
 
 `make help` liste toutes les cibles.

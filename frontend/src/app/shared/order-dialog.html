@@ -1,0 +1,52 @@
+<p-button
+  class="open-order"
+  [label]="buttonLabel()"
+  icon="pi pi-sort-alt"
+  severity="secondary"
+  size="small"
+  [text]="true"
+  (onClick)="open()"
+/>
+
+<p-dialog
+  [header]="header()"
+  [modal]="true"
+  [dismissableMask]="true"
+  [visible]="visible()"
+  (visibleChange)="visible.set($event)"
+  [style]="{ width: '26rem' }"
+  [breakpoints]="{ '575px': '94vw' }"
+>
+  <p class="mb-3 text-sm text-muted">
+    Glissez les éléments, ou sélectionnez-en un et utilisez les flèches.
+    @if (hint()) {
+      {{ hint() }}
+    }
+  </p>
+
+  <p-orderList [value]="draft" [dragdrop]="true" scrollHeight="22rem" [ariaLabel]="header()">
+    <ng-template #item let-item>
+      <span class="order-item inline-flex items-center gap-2">
+        <i class="pi pi-bars text-muted"></i>
+        {{ item.label }}
+      </span>
+    </ng-template>
+  </p-orderList>
+
+  <ng-template #footer>
+    <p-button
+      class="reset-order"
+      label="Ordre alphabétique"
+      severity="secondary"
+      [text]="true"
+      (onClick)="resetAlphabetical()"
+    />
+    <p-button
+      label="Annuler"
+      severity="secondary"
+      [outlined]="true"
+      (onClick)="visible.set(false)"
+    />
+    <p-button class="save-order" label="Enregistrer" (onClick)="save()" />
+  </ng-template>
+</p-dialog>

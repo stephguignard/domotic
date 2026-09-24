@@ -2,7 +2,7 @@ import { HttpTestingController, TestRequest } from '@angular/common/http/testing
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { DeviceDetail } from './device-detail';
-import { Device, Measurement } from '../../api';
+import { CommandLogEntry, Device, Measurement } from '../../api';
 import { makeDevice, makeStation, testProviders } from '../../testing/providers';
 
 describe('DeviceDetail', () => {
@@ -17,7 +17,17 @@ describe('DeviceDetail', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  /** Répond aux lectures d'historique des actions, secondaires pour la plupart des cas. */
+  function flushHistory(entries: CommandLogEntry[] = []): void {
+    http
+      .match((req) => req.url === '/api/commands')
+      .forEach((req) => req.flush({ entries, total: entries.length }));
+  }
+
+  afterEach(() => {
+    flushHistory();
+    http.verify();
+  });
 
   /** Requête d'historique, dont les paramètres de plage varient à chaque appel. */
   function measurementsRequest(id: string): TestRequest {
@@ -194,5 +204,44 @@ describe('DeviceDetail', () => {
     const fixture = await render(makeDevice(), []);
 
     expect(text(fixture)).toContain('Aucun relevé enregistré');
+  });
+
+  it("montre les dernières actions sur l'équipement", async () => {
+    const device = makeDevice();
+    const fixture = await render(device);
+
+    const req = http.expectOne((r) => r.url === '/api/commands');
+    // Le client généré encode lui-même les valeurs ; l'URL ne l'est qu'une fois.
+    expect(decodeURIComponent(req.request.params.get('device_id') ?? '')).toBe(device.id);
+    req.flush({
+      entries: [
+        {
+          id: 2,
+          device_id: device.id,
+          device_name: device.name,
+          device_kind: 'shutter',
+          source: 'tahoma',
+          command: 'close',
+          parameters: [],
+          success: false,
+          error: 'box injoignable',
+          origin: 'interface',
+          created_at: '2026-09-24T08:00:00Z',
+        },
+      ],
+      total: 1,
+    });
+    await fixture.whenStable();
+
+    const row = (fixture.nativeElement as HTMLElement).querySelector('.history-row');
+    expect(row?.textContent).toContain('Fermer');
+    expect(row?.textContent).toContain('Échec');
+  });
+
+  it("n'affiche pas d'historique des actions pour une station Netatmo", async () => {
+    const fixture = await render(makeStation());
+
+    http.expectNone((r) => r.url === '/api/commands');
+    expect(text(fixture)).not.toContain('Dernières actions');
   });
 });

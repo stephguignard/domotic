@@ -8,6 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/stephguignard/domotic/internal/command"
+	"github.com/stephguignard/domotic/internal/control"
 	"github.com/stephguignard/domotic/internal/store"
 )
 
@@ -39,7 +40,7 @@ type GetDeviceOutput struct {
 type CommandInput struct {
 	ID   string `path:"id" doc:"Identifiant de l'équipement"`
 	Body struct {
-		Command    string `json:"command" minLength:"1" doc:"Nom de la commande, ex. open, close, on, off, setBrightness"`
+		Command    string `json:"command" minLength:"1" doc:"Nom de la commande, ex. open, close, on, off, setBrightness, setColor, setColorTemperature"`
 		Parameters []any  `json:"parameters,omitempty" doc:"Paramètres de la commande, selon l'équipement"`
 	}
 }
@@ -113,27 +114,9 @@ func registerDevices(api huma.API, d Deps) {
 			return nil, huma.Error500InternalServerError("lecture de l'équipement", err)
 		}
 
-		commander, controllable := d.commander(device.Source)
-		if !controllable {
-			return nil, huma.Error422UnprocessableEntity(
-				"les équipements " + device.Source + " ne sont pas pilotables")
-		}
-		if commander == nil {
-			return nil, huma.Error503ServiceUnavailable("intégration " + device.Source + " non configurée")
-		}
-
-		execID, err := commander.Execute(ctx, device.ID, in.Body.Command, in.Body.Parameters)
-		if errors.Is(err, command.ErrUnsupported) {
-			return nil, huma.Error422UnprocessableEntity(err.Error())
-		}
+		execID, err := d.Control.Send(ctx, device, in.Body.Command, in.Body.Parameters, control.Interface)
 		if err != nil {
-			return nil, huma.Error502BadGateway("échec de l'envoi de la commande", err)
-		}
-
-		// Sans flux d'événements, la source ne remonterait le nouvel état
-		// qu'au prochain tour de polling : le demander tout de suite.
-		if d.Poller != nil {
-			d.Poller.Nudge(device.Source)
+			return nil, commandError(err)
 		}
 
 		out := &CommandOutput{}
@@ -157,4 +140,16 @@ func registerDevices(api huma.API, d Deps) {
 		out.Body.Rooms = rooms
 		return out, nil
 	})
+}
+
+// commandError traduit l'échec d'une commande en réponse HTTP.
+func commandError(err error) error {
+	switch {
+	case errors.Is(err, control.ErrNotControllable), errors.Is(err, command.ErrUnsupported):
+		return huma.Error422UnprocessableEntity(err.Error())
+	case errors.Is(err, control.ErrNotConfigured):
+		return huma.Error503ServiceUnavailable(err.Error())
+	default:
+		return huma.Error502BadGateway("échec de l'envoi de la commande", err)
+	}
 }

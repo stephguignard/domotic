@@ -45,10 +45,27 @@ type light struct {
 	Dimming *struct {
 		Brightness float64 `json:"brightness"`
 	} `json:"dimming"`
+	Color *struct {
+		XY struct {
+			X float64 `json:"x"`
+			Y float64 `json:"y"`
+		} `json:"xy"`
+	} `json:"color"`
+	// ColorTemperature est présent pour toute lampe d'ambiance ; Mirek est nul
+	// quand la lampe est réglée sur une couleur plutôt que sur un blanc.
+	ColorTemperature *struct {
+		Mirek      *int `json:"mirek"`
+		MirekValid bool `json:"mirek_valid"`
+	} `json:"color_temperature"`
 }
 
 // state retourne les grandeurs connues de la lumière, au format de l'état
-// unifié. Une lumière sans variateur n'a pas de luminosité.
+// unifié. Seules figurent celles que la lampe sait produire : une prise n'a
+// pas de luminosité, une lampe blanche pas de couleur. Le frontend s'appuie
+// sur cette présence pour choisir les réglages à proposer.
+//
+// color_temperature vaut nil quand une lampe d'ambiance est réglée sur une
+// couleur : la clé reste présente, puisque la lampe sait produire des blancs.
 func (l light) state() map[string]any {
 	out := map[string]any{}
 	if l.On != nil {
@@ -56,6 +73,16 @@ func (l light) state() map[string]any {
 	}
 	if l.Dimming != nil {
 		out["brightness"] = l.Dimming.Brightness
+	}
+	if l.Color != nil {
+		out["color"] = xyToHex(l.Color.XY.X, l.Color.XY.Y)
+	}
+	if ct := l.ColorTemperature; ct != nil {
+		if ct.MirekValid && ct.Mirek != nil && *ct.Mirek > 0 {
+			out["color_temperature"] = mirekToKelvin(*ct.Mirek)
+		} else {
+			out["color_temperature"] = nil
+		}
 	}
 	return out
 }

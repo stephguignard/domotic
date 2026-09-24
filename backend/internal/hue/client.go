@@ -128,7 +128,9 @@ func (c *Client) FetchDevices(ctx context.Context) ([]store.Device, error) {
 	return devices, nil
 }
 
-// Execute pilote une lumière : on, off, ou setBrightness avec un pourcentage.
+// Execute pilote une lumière : on, off, setBrightness avec un pourcentage,
+// setColor avec une couleur « #rrggbb », setColorTemperature avec des kelvins.
+// Régler une couleur ou une température allume la lampe.
 func (c *Client) Execute(ctx context.Context, id, cmd string, params []any) (string, error) {
 	var body map[string]any
 	switch cmd {
@@ -148,6 +150,29 @@ func (c *Client) Execute(ctx context.Context, id, cmd string, params []any) (str
 				"dimming": map[string]float64{"brightness": pct},
 			}
 		}
+	case "setColor":
+		hex, ok := singleParam[string](params)
+		if !ok {
+			return "", fmt.Errorf("%w: setColor attend une couleur #rrggbb", command.ErrUnsupported)
+		}
+		x, y, err := hexToXY(hex)
+		if err != nil {
+			return "", fmt.Errorf("%w: %v", command.ErrUnsupported, err)
+		}
+		body = map[string]any{
+			"on":    map[string]bool{"on": true},
+			"color": map[string]any{"xy": map[string]float64{"x": x, "y": y}},
+		}
+	case "setColorTemperature":
+		kelvin, ok := singleParam[float64](params)
+		if !ok || kelvin < 2000 || kelvin > 6500 {
+			return "", fmt.Errorf("%w: setColorTemperature attend une température de 2000 à 6500 K",
+				command.ErrUnsupported)
+		}
+		body = map[string]any{
+			"on":                map[string]bool{"on": true},
+			"color_temperature": map[string]int{"mirek": kelvinToMirek(kelvin)},
+		}
 	default:
 		return "", fmt.Errorf("%w par une lumière Hue: %s", command.ErrUnsupported, cmd)
 	}
@@ -160,14 +185,21 @@ func (c *Client) Execute(ctx context.Context, id, cmd string, params []any) (str
 }
 
 func brightnessParam(params []any) (float64, error) {
-	if len(params) != 1 {
-		return 0, fmt.Errorf("%w: setBrightness attend un pourcentage", command.ErrUnsupported)
-	}
-	pct, ok := params[0].(float64) // un nombre JSON décodé
+	pct, ok := singleParam[float64](params) // un nombre JSON décodé
 	if !ok || pct < 0 || pct > 100 {
-		return 0, fmt.Errorf("%w: luminosité invalide %v, attendu 0 à 100", command.ErrUnsupported, params[0])
+		return 0, fmt.Errorf("%w: setBrightness attend un pourcentage de 0 à 100", command.ErrUnsupported)
 	}
 	return pct, nil
+}
+
+// singleParam extrait l'unique paramètre d'une commande, du type attendu.
+func singleParam[T any](params []any) (T, bool) {
+	var zero T
+	if len(params) != 1 {
+		return zero, false
+	}
+	v, ok := params[0].(T)
+	return v, ok
 }
 
 // get lit toutes les ressources d'un type.

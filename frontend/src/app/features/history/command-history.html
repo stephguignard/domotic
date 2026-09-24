@@ -1,0 +1,71 @@
+@if (error()) {
+  <p class="text-sm text-muted">L'historique est momentanément indisponible.</p>
+} @else if (!loading() && entries().length === 0) {
+  <p class="text-sm text-muted">
+    @if (deviceId()) {
+      Aucune action sur cet équipement pour l'instant.
+    } @else {
+      Aucune action pour l'instant. Les commandes envoyées depuis l'interface apparaîtront ici.
+    }
+  </p>
+} @else {
+  <p-table
+    [value]="entries()"
+    [loading]="loading()"
+    [paginator]="entries().length > 20"
+    [rows]="20"
+    dataKey="id"
+    currentPageReportTemplate="{first} à {last} sur {totalRecords}"
+    [showCurrentPageReport]="entries().length > 20"
+  >
+    <ng-template #header>
+      <tr>
+        <th class="w-px whitespace-nowrap">Date</th>
+        @if (!deviceId()) {
+          <th>Équipement</th>
+          <th>Source</th>
+        }
+        <th>Action</th>
+        <th class="w-px whitespace-nowrap">Résultat</th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-entry>
+      <tr class="history-row">
+        <td class="whitespace-nowrap tabular-nums text-muted">
+          {{ entry.created_at | date: 'dd/MM/yyyy HH:mm:ss' }}
+        </td>
+        @if (!deviceId()) {
+          <td>
+            <a
+              [routerLink]="['/devices', entry.device_id]"
+              class="inline-flex items-center gap-2 font-medium text-inherit no-underline hover:underline"
+            >
+              <i [class]="kindIcon(entry.device_kind)" class="text-primary"></i>
+              {{ entry.device_name }}
+            </a>
+          </td>
+          <td>
+            <p-tag [value]="sourceLabel(entry.source)" [severity]="sourceSeverity(entry.source)" />
+          </td>
+        }
+        <td class="action">
+          {{ actionLabel(entry.device_kind, entry.command, entry.parameters) }}
+          @if (entry.origin !== 'interface') {
+            <span class="origin ml-2 inline-flex items-center gap-1 text-xs text-muted">
+              <i [class]="entry.origin === 'scene_schedule' ? 'pi pi-clock' : 'pi pi-play'"></i>
+              {{ entry.scene_name }}
+            </span>
+          }
+        </td>
+        <td class="w-px whitespace-nowrap">
+          @if (entry.success) {
+            <p-tag value="Réussie" severity="success" />
+          } @else {
+            <p-tag value="Échec" severity="danger" [pTooltip]="entry.error" tooltipPosition="left" />
+          }
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+}

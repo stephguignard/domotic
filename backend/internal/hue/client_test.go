@@ -225,6 +225,8 @@ func TestExecuteBodies(t *testing.T) {
 		{"off", nil, `{"on":{"on":false}}`},
 		{"setBrightness", []any{60.0}, `{"dimming":{"brightness":60},"on":{"on":true}}`},
 		{"setBrightness", []any{0.0}, `{"on":{"on":false}}`},
+		{"setColor", []any{"#ff0000"}, `{"color":{"xy":{"x":0.7006,"y":0.2993}},"on":{"on":true}}`},
+		{"setColorTemperature", []any{2700.0}, `{"color_temperature":{"mirek":370},"on":{"on":true}}`},
 	}
 	for _, tc := range cases {
 		if _, err := c.Execute(ctx, "l-1", tc.cmd, tc.params); err != nil {
@@ -238,7 +240,11 @@ func TestExecuteBodies(t *testing.T) {
 	for _, bad := range []struct {
 		cmd    string
 		params []any
-	}{{"open", nil}, {"setBrightness", nil}, {"setBrightness", []any{150.0}}, {"setBrightness", []any{"fort"}}} {
+	}{
+		{"open", nil}, {"setBrightness", nil}, {"setBrightness", []any{150.0}}, {"setBrightness", []any{"fort"}},
+		{"setColor", []any{"rouge"}}, {"setColor", []any{"#000000"}}, {"setColor", []any{12.0}},
+		{"setColorTemperature", []any{1500.0}}, {"setColorTemperature", []any{"chaud"}},
+	} {
 		if _, err := c.Execute(ctx, "l-1", bad.cmd, bad.params); !errors.Is(err, command.ErrUnsupported) {
 			t.Errorf("%s %v : erreur %v, attendu command.ErrUnsupported", bad.cmd, bad.params, err)
 		}

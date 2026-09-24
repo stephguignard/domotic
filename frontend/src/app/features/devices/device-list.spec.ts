@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { DeviceList } from './device-list';
 import { Device } from '../../api';
 import { DevicesStore } from '../../core/devices.store';
-import { makeDevice, makeStation, testProviders } from '../../testing/providers';
+import { flushRoomOrder, makeDevice, makeStation, testProviders } from '../../testing/providers';
 
 describe('DeviceList', () => {
   let http: HttpTestingController;
@@ -27,6 +27,7 @@ describe('DeviceList', () => {
 
     http.expectOne('/api/devices').flush({ devices, total: devices.length });
     http.expectOne('/api/health').flush({ status: 'ok', database: true, sources: {} });
+    flushRoomOrder();
 
     const fixture = TestBed.createComponent(DeviceList);
     await fixture.whenStable();

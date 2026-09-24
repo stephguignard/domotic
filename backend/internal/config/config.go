@@ -18,10 +18,28 @@ type Config struct {
 	DBPath    string
 	PublicURL string // URL publique du service, utilisée pour le callback OAuth2
 
+	// Location situe la maison : fuseau des horaires de scènes, coordonnées
+	// des horaires solaires.
+	Location LocationConfig
+
 	Netatmo NetatmoConfig
 	Tahoma  TahomaConfig
 	Shelly  ShellyConfig
 	Hue     HueConfig
+}
+
+// LocationConfig situe la maison.
+type LocationConfig struct {
+	// TimeZone interprète les heures des horaires de scènes. Le conteneur
+	// distroless n'a ni /etc/localtime ni base de fuseaux : le binaire
+	// embarque la sienne (time/tzdata) et le fuseau se nomme explicitement.
+	TimeZone *time.Location
+	// Latitude et Longitude, en degrés décimaux (est positif), servent au
+	// lever et au coucher du soleil. Sans elles, HasCoordinates est faux et
+	// les horaires solaires sont refusés.
+	Latitude       float64
+	Longitude      float64
+	HasCoordinates bool
 }
 
 // NetatmoConfig porte les paramètres de l'API cloud Netatmo.
@@ -118,6 +136,9 @@ func Load() (*Config, error) {
 		},
 	}
 
+	if err := cfg.loadLocation(); err != nil {
+		return nil, err
+	}
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
@@ -180,6 +201,56 @@ func (c *Config) validate() error {
 
 	return nil
 }
+
+// loadLocation lit le fuseau et les coordonnées de la maison.
+func (c *Config) loadLocation() error {
+	name := envStr("DOMOTIC_TIMEZONE", systemZoneName())
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return fmt.Errorf("DOMOTIC_TIMEZONE invalide %q, attendu un nom IANA comme Europe/Zurich", name)
+	}
+	c.Location.TimeZone = loc
+
+	lat, lon := os.Getenv("DOMOTIC_LATITUDE"), os.Getenv("DOMOTIC_LONGITUDE")
+	if (lat == "") != (lon == "") {
+		return fmt.Errorf("DOMOTIC_LATITUDE et DOMOTIC_LONGITUDE doivent être fournies ensemble")
+	}
+	if lat == "" {
+		return nil
+	}
+	if c.Location.Latitude, err = strconv.ParseFloat(lat, 64); err != nil ||
+		c.Location.Latitude < -90 || c.Location.Latitude > 90 {
+		return fmt.Errorf("DOMOTIC_LATITUDE invalide %q, attendu des degrés décimaux entre -90 et 90", lat)
+	}
+	if c.Location.Longitude, err = strconv.ParseFloat(lon, 64); err != nil ||
+		c.Location.Longitude < -180 || c.Location.Longitude > 180 {
+		return fmt.Errorf("DOMOTIC_LONGITUDE invalide %q, attendu des degrés décimaux entre -180 et 180", lon)
+	}
+	c.Location.HasCoordinates = true
+	return nil
+}
+
+// systemZoneName retourne le nom IANA du fuseau de la machine, ou "UTC".
+//
+// time.Local ne convient pas : il se nomme « Local », ce qui n'apprend rien à
+// l'interface, et vaut UTC dans l'image distroless, qui n'a pas de
+// /etc/localtime. Le nom se lit donc dans TZ, sinon dans la cible du lien
+// /etc/localtime (…/zoneinfo/Europe/Zurich). En conteneur, docker-compose fixe
+// DOMOTIC_TIMEZONE et ce repli ne sert pas.
+func systemZoneName() string {
+	if tz := strings.TrimPrefix(os.Getenv("TZ"), ":"); tz != "" {
+		return tz
+	}
+	if target, err := os.Readlink(localtimePath); err == nil {
+		if _, name, ok := strings.Cut(target, "zoneinfo/"); ok && name != "" {
+			return name
+		}
+	}
+	return "UTC"
+}
+
+// localtimePath est variable pour les tests.
+var localtimePath = "/etc/localtime"
 
 // NetatmoRedirectURL construit l'URL de callback OAuth2, qui doit correspondre
 // exactement à celle déclarée sur dev.netatmo.com.

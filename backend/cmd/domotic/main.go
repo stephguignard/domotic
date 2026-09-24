@@ -14,6 +14,9 @@ import (
 	"net/http"
 	"os"
 	"time"
+	// Base de fuseaux horaires embarquée (~450 Ko) : l'image distroless n'en
+	// a pas, et les horaires de scènes s'expriment en heure locale.
+	_ "time/tzdata"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
@@ -21,10 +24,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stephguignard/domotic/internal/api"
+	"github.com/stephguignard/domotic/internal/command"
 	"github.com/stephguignard/domotic/internal/config"
+	"github.com/stephguignard/domotic/internal/control"
 	"github.com/stephguignard/domotic/internal/hue"
 	"github.com/stephguignard/domotic/internal/netatmo"
 	"github.com/stephguignard/domotic/internal/poller"
+	"github.com/stephguignard/domotic/internal/scenes"
 	"github.com/stephguignard/domotic/internal/shelly"
 	"github.com/stephguignard/domotic/internal/store"
 	"github.com/stephguignard/domotic/internal/tahoma"
@@ -63,6 +69,7 @@ type service struct {
 	store      *store.Store
 	cancel     context.CancelFunc
 	pollerDone chan struct{}
+	scenesDone chan struct{}
 }
 
 func (s *service) start() {
@@ -120,6 +127,12 @@ func (s *service) start() {
 		deps.Poller.Run(ctx)
 	}()
 
+	s.scenesDone = make(chan struct{})
+	go func() {
+		defer close(s.scenesDone)
+		deps.Scenes.Run(ctx)
+	}()
+
 	logStartup(s.log, cfg)
 	if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		s.log.Error("serveur HTTP", "error", err)
@@ -148,6 +161,15 @@ func (s *service) stop() {
 		case <-s.pollerDone:
 		case <-time.After(10 * time.Second):
 			s.log.Warn("arrêt des boucles de polling interrompu par le délai d'attente")
+		}
+	}
+	// Avant la fermeture de la base : le moteur y marque interrompues les
+	// scènes coupées en cours d'exécution.
+	if s.scenesDone != nil {
+		select {
+		case <-s.scenesDone:
+		case <-time.After(5 * time.Second):
+			s.log.Warn("arrêt du moteur de scènes interrompu par le délai d'attente")
 		}
 	}
 
@@ -201,6 +223,27 @@ func buildDeps(cfg *config.Config, st *store.Store, log *slog.Logger) (api.Deps,
 		Shelly:  deps.Shelly,
 		Hue:     deps.Hue,
 	}, log)
+
+	// Seules les sources configurées sont ajoutées : un pointeur nil typé
+	// rangé dans l'interface Commander ne serait pas une interface nil.
+	commanders := map[string]command.Commander{}
+	if deps.Tahoma != nil {
+		commanders["tahoma"] = deps.Tahoma
+	}
+	if deps.Shelly != nil {
+		commanders["shelly"] = deps.Shelly
+	}
+	if deps.Hue != nil {
+		commanders["hue"] = deps.Hue
+	}
+	deps.Control = control.New(st, commanders, deps.Poller.Nudge, log)
+
+	deps.Scenes = scenes.New(st, deps.Control, scenes.Place{
+		TimeZone:       cfg.Location.TimeZone,
+		Latitude:       cfg.Location.Latitude,
+		Longitude:      cfg.Location.Longitude,
+		HasCoordinates: cfg.Location.HasCoordinates,
+	}, log.With("component", "scenes"))
 	return deps, nil
 }
 
@@ -341,7 +384,12 @@ func logStartup(log *slog.Logger, cfg *config.Config) {
 		"tahoma", cfg.Tahoma.Enabled(),
 		"shelly", cfg.Shelly.Enabled(),
 		"hue", cfg.Hue.Enabled(),
+		"timezone", cfg.Location.TimeZone.String(),
+		"solar", cfg.Location.HasCoordinates,
 	)
+	if cfg.Location.TimeZone == time.UTC {
+		log.Warn("heures des scènes comptées en UTC : renseigner DOMOTIC_TIMEZONE, ex. Europe/Zurich")
+	}
 	if cfg.Netatmo.Enabled() {
 		log.Info("authentification Netatmo disponible sur " + cfg.PublicURL + "/auth/netatmo")
 	}

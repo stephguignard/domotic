@@ -52,6 +52,8 @@ const METRIC_LABELS: Record<string, string> = {
   'core:TargetClosureState': 'Fermeture visée',
   on: 'Allumé',
   brightness: 'Luminosité',
+  color: 'Couleur',
+  color_temperature: 'Température de couleur',
   device_temperature: 'Température interne',
 };
 
@@ -75,6 +77,7 @@ const METRIC_UNITS: Record<string, string> = {
   'core:TargetClosureState': '%',
   'core:RSSILevelState': '%',
   brightness: '%',
+  color_temperature: 'K',
   device_temperature: '°C',
 };
 
@@ -166,6 +169,27 @@ export function kindIcon(kind: string): string {
   }
 }
 
+/** Libellé du groupe des équipements rangés dans aucune pièce. */
+export const NO_ROOM = 'Sans pièce';
+
+/**
+ * Trie des pièces pour l'affichage : d'abord celles que l'utilisateur a
+ * classées, dans son ordre ; ensuite les autres, par ordre alphabétique ;
+ * « Sans pièce » toujours en dernier.
+ */
+export function sortRooms(rooms: string[], order: readonly string[]): string[] {
+  const rank = (room: string) => {
+    const i = order.indexOf(room);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...rooms].sort((a, b) => {
+    if (a === NO_ROOM || b === NO_ROOM) {
+      return (a === NO_ROOM ? 1 : 0) - (b === NO_ROOM ? 1 : 0);
+    }
+    return rank(a) - rank(b) || a.localeCompare(b, 'fr');
+  });
+}
+
 /** Sources dont les équipements se pilotent. L'API météo Netatmo est en
  * lecture seule, et le backend rejette toute commande qui lui serait adressée. */
 const CONTROLLABLE_SOURCES = new Set(['tahoma', 'hue', 'shelly']);
@@ -173,6 +197,113 @@ const CONTROLLABLE_SOURCES = new Set(['tahoma', 'hue', 'shelly']);
 /** Indique si un équipement accepte des commandes. */
 export function isControllable(device: Device): boolean {
   return CONTROLLABLE_SOURCES.has(device.source) && device.reachable;
+}
+
+/**
+ * Réglages d'une lumière, tels que l'interface peut les proposer.
+ *
+ * Une propriété absente signifie que la lampe ne sait pas faire ce réglage :
+ * le backend ne remonte que les grandeurs qu'elle produit. `null` signifie
+ * qu'elle le sait mais n'y est pas réglée — une lampe d'ambiance réglée sur
+ * une couleur n'a pas de température de blanc.
+ */
+export interface LightSettings {
+  brightness?: number;
+  color?: string;
+  colorTemperature?: number | null;
+}
+
+/** Bornes des blancs réglables, en kelvins, communes aux lampes Hue d'ambiance. */
+export const COLOR_TEMPERATURE_RANGE = { min: 2000, max: 6500 } as const;
+
+/** Extrait les réglages d'une lumière de son état ; vide pour tout autre type. */
+export function lightSettings(device: Device): LightSettings {
+  if (device.kind !== 'light') {
+    return {};
+  }
+  const state = parseState(device);
+  const settings: LightSettings = {};
+
+  if (typeof state['brightness'] === 'number') {
+    settings.brightness = state['brightness'];
+  }
+  if (typeof state['color'] === 'string' && /^#[0-9a-f]{6}$/i.test(state['color'])) {
+    settings.color = state['color'];
+  }
+  if ('color_temperature' in state) {
+    const ct = state['color_temperature'];
+    settings.colorTemperature = typeof ct === 'number' ? ct : null;
+  }
+  return settings;
+}
+
+/** Types dont l'état marche/arrêt se lit d'un coup d'œil. */
+const POWERED_KINDS = new Set(['light', 'switch']);
+
+/**
+ * État marche/arrêt d'un équipement : `true` allumé, `false` éteint, `null`
+ * quand la notion ne s'applique pas (volet, capteur) ou que l'état est inconnu.
+ */
+export function powerState(device: Device): boolean | null {
+  if (!POWERED_KINDS.has(device.kind)) {
+    return null;
+  }
+  const on = parseState(device)['on'];
+  return typeof on === 'boolean' ? on : null;
+}
+
+/**
+ * Couleur d'un équipement allumé : celle de la lampe quand elle en a une — un
+ * blanc chaud y apparaît orangé, comme dans la pièce —, sinon une teinte
+ * générique. `null` pour un équipement éteint ou sans état marche/arrêt.
+ */
+export function litColor(device: Device): string | null {
+  if (powerState(device) !== true) {
+    return null;
+  }
+  return lightSettings(device).color ?? 'var(--color-lit)';
+}
+
+/** Halo d'une carte d'équipement allumé, dans sa couleur. */
+export function litGlow(device: Device): string | null {
+  const color = litColor(device);
+  return color
+    ? `0 0 0 2px color-mix(in srgb, ${color} 55%, transparent), ` +
+        `0 6px 20px -6px color-mix(in srgb, ${color} 60%, transparent)`
+    : null;
+}
+
+/** Décrit une action pour l'historique : « Fermer », « Luminosité à 40 % »… */
+export function actionLabel(kind: string, command: string, parameters: unknown[] = []): string {
+  const [value] = parameters;
+  switch (command) {
+    case 'setBrightness':
+      return `Luminosité à ${value} %`;
+    case 'setColor':
+      return `Couleur ${value}`;
+    case 'setColorTemperature':
+      return `Blanc à ${value} K`;
+    case 'setRoom':
+      return value ? `Rangé dans « ${value} »` : 'Rangé sans pièce';
+    case 'resetRoom':
+      return 'Pièce de la source rétablie';
+  }
+  return commandsFor(kind).find((c) => c.command === command)?.label ?? command;
+}
+
+/** Décrit une commande pour la notification qui confirme son envoi. */
+export function describeCommand(kind: string, command: string, parameters: unknown[] = []): string {
+  const [value] = parameters;
+  switch (command) {
+    case 'setBrightness':
+      return `Luminosité réglée à ${value} %`;
+    case 'setColor':
+      return `Couleur réglée à ${value}`;
+    case 'setColorTemperature':
+      return `Blanc réglé à ${value} K`;
+  }
+  const label = commandsFor(kind).find((c) => c.command === command)?.label;
+  return label ? `Commande « ${label} » envoyée` : `Commande « ${command} » envoyée`;
 }
 
 /**

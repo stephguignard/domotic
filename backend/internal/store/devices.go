@@ -15,14 +15,18 @@ var ErrNotFound = errors.New("introuvable")
 // Device est la représentation unifiée d'un équipement, quelle que soit sa
 // source. Les tags JSON servent aussi à la génération du schéma OpenAPI.
 type Device struct {
-	ID        string    `json:"id" doc:"Identifiant de l'équipement dans sa source d'origine"`
-	Source    string    `json:"source" enum:"netatmo,tahoma,hue,shelly" doc:"Source de l'équipement"`
-	Name      string    `json:"name" doc:"Nom lisible"`
-	Kind      string    `json:"kind" doc:"Type d'équipement, ex. weather_station, shutter, light, switch"`
-	Room      string    `json:"room" doc:"Pièce, si connue"`
-	State     string    `json:"state" doc:"État courant normalisé, encodé en JSON"`
-	Reachable bool      `json:"reachable" doc:"L'équipement répond-il ?"`
-	UpdatedAt time.Time `json:"updated_at" doc:"Date du dernier rafraîchissement"`
+	ID     string `json:"id" doc:"Identifiant de l'équipement dans sa source d'origine"`
+	Source string `json:"source" enum:"netatmo,tahoma,hue,shelly" doc:"Source de l'équipement"`
+	Name   string `json:"name" doc:"Nom lisible"`
+	Kind   string `json:"kind" doc:"Type d'équipement, ex. weather_station, shutter, light, switch"`
+	Room   string `json:"room" doc:"Pièce effective : celle choisie dans l'interface, sinon celle de la source"`
+	// SourceRoom et RoomOverridden ne sont pas écrits par UpsertDevices, qui
+	// n'enregistre que Room, comme pièce de la source.
+	SourceRoom     string    `json:"source_room" doc:"Pièce fournie par la source, vide si elle n'en fournit pas"`
+	RoomOverridden bool      `json:"room_overridden" doc:"La pièce a-t-elle été choisie dans l'interface ?"`
+	State          string    `json:"state" doc:"État courant normalisé, encodé en JSON"`
+	Reachable      bool      `json:"reachable" doc:"L'équipement répond-il ?"`
+	UpdatedAt      time.Time `json:"updated_at" doc:"Date du dernier rafraîchissement"`
 }
 
 // DeviceFilter restreint la liste des équipements retournés.
@@ -43,15 +47,15 @@ func (s *Store) ListDevices(ctx context.Context, f DeviceFilter) ([]Device, erro
 		args = append(args, f.Source)
 	}
 	if f.Room != "" {
-		where = append(where, "room = ?")
+		where = append(where, effectiveRoom+" = ?")
 		args = append(args, f.Room)
 	}
 
-	query := `SELECT id, source, name, kind, room, state, reachable, updated_at FROM device`
+	query := `SELECT ` + deviceColumns + ` FROM device`
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
 	}
-	query += " ORDER BY room, name"
+	query += " ORDER BY " + effectiveRoom + ", name"
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -75,8 +79,7 @@ func (s *Store) ListDevices(ctx context.Context, f DeviceFilter) ([]Device, erro
 
 // GetDevice retourne un équipement par son identifiant.
 func (s *Store) GetDevice(ctx context.Context, id string) (Device, error) {
-	row := s.db.QueryRowContext(ctx,
-		`SELECT id, source, name, kind, room, state, reachable, updated_at FROM device WHERE id = ?`, id)
+	row := s.db.QueryRowContext(ctx, `SELECT `+deviceColumns+` FROM device WHERE id = ?`, id)
 
 	d, err := scanDevice(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -167,7 +170,7 @@ func (s *Store) MarkUnreachable(ctx context.Context, source, prefix string) erro
 // ListRooms retourne les pièces connues, sans doublon.
 func (s *Store) ListRooms(ctx context.Context) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT DISTINCT room FROM device WHERE room != '' ORDER BY room`)
+		`SELECT DISTINCT `+effectiveRoom+` AS r FROM device WHERE r != '' ORDER BY r`)
 	if err != nil {
 		return nil, fmt.Errorf("liste des pièces: %w", err)
 	}
@@ -184,6 +187,32 @@ func (s *Store) ListRooms(ctx context.Context) ([]string, error) {
 	return rooms, rows.Err()
 }
 
+// SetRoomOverride fixe la pièce d'un équipement indépendamment de sa source.
+// room nil rétablit la pièce de la source ; une chaîne vide range l'équipement
+// « sans pièce ».
+func (s *Store) SetRoomOverride(ctx context.Context, id string, room *string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE device SET room_override = ? WHERE id = ?`, room, id)
+	if err != nil {
+		return fmt.Errorf("choix de la pièce de %s: %w", id, err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("choix de la pièce de %s: %w", id, err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// effectiveRoom est la pièce affichée : le choix fait dans l'interface prime
+// sur la source.
+const effectiveRoom = `COALESCE(room_override, room)`
+
+// deviceColumns liste les colonnes lues par scanDevice, dans son ordre.
+const deviceColumns = `id, source, name, kind, ` + effectiveRoom + `, room, room_override IS NOT NULL,
+	state, reachable, updated_at`
+
 // scanner couvre *sql.Row et *sql.Rows, dont les Scan ont la même signature.
 type scanner interface {
 	Scan(dest ...any) error
@@ -191,7 +220,8 @@ type scanner interface {
 
 func scanDevice(sc scanner) (Device, error) {
 	var d Device
-	err := sc.Scan(&d.ID, &d.Source, &d.Name, &d.Kind, &d.Room, &d.State, &d.Reachable, &d.UpdatedAt)
+	err := sc.Scan(&d.ID, &d.Source, &d.Name, &d.Kind, &d.Room, &d.SourceRoom, &d.RoomOverridden,
+		&d.State, &d.Reachable, &d.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Device{}, err // laissé à l'appelant pour distinguer le cas

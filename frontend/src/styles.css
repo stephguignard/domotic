@@ -35,6 +35,18 @@
   --radius-content: var(--p-content-border-radius);
 }
 
+/* Teintes physiques des blancs réglables, du plus chaud (2000 K) au plus froid
+ * (6500 K). Indépendantes du thème : elles décrivent la lumière de la lampe,
+ * pas l'interface. */
+@theme {
+  --color-kelvin-warm: #ff8a1c;
+  --color-kelvin-neutral: #fff1dc;
+  --color-kelvin-cool: #c9d9ff;
+
+  /* Équipement allumé sans couleur propre : prise, relais, lampe blanche. */
+  --color-lit: #f5a524;
+}
+
 /* Icônes utilisées par Optimus UI (classes `pi pi-*`), héritées de PrimeNG. */
 @import 'primeicons/primeicons.css';
 
