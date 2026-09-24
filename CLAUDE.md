@@ -237,6 +237,31 @@ RFC 7616.
 Les voies sont de type `switch`, et le frontend **confirme** toute commande sur ce
 type (`needsConfirmation`) : elles pilotent chauffe-eau et chauffages.
 
+### Scènes et horaires
+
+Une **scène** est une suite d'étapes (action sur des équipements et/ou des pièces,
+ou attente) ; ses **horaires** la lancent. Un horaire déclenche toujours une scène,
+jamais une action isolée. Le moteur (`internal/scenes`) est une goroutine qui dort
+jusqu'à la prochaine échéance ; chaque exécution a la sienne.
+
+Règles à préserver, chacune choisie explicitement :
+
+- **Commandes via `control.Controller`**, comme l'interface : même historique, avec
+  l'origine (`scene_manual`, `scene_schedule`) et le nom de la scène.
+- **Pièces résolues au lancement** (`Resolve`), équipements incompatibles écartés
+  sans erreur. L'aperçu de l'éditeur appelle le même `Resolve`.
+- **Relancer une scène annule l'exécution en cours** ; le dernier ordre l'emporte.
+- **Une action en échec est retentée une fois après 30 s**, sans retarder la suite ;
+  un refus définitif (`ErrUnsupported`, source non configurée) ne l'est pas.
+- **Rattrapage** d'une échéance manquée de moins de 5 min, jamais au-delà.
+- **Arrêt du service** : les exécutions en cours sont marquées `interrupted`, leurs
+  étapes restantes abandonnées. `main.go` attend le moteur **avant** de fermer la base.
+- Heures en **heure locale** de `DOMOTIC_TIMEZONE` (base de fuseaux embarquée par
+  `time/tzdata`, absente de l'image distroless). Soleil : `solar.go`, vérifié contre
+  l'US Naval Observatory ; la correction `deltaT` (~69 s) n'est pas facultative.
+- Les relais Shelly restent programmés **sur le module** pour le chauffage et l'eau
+  chaude : ces programmations tournent même NAS éteint. L'éditeur le rappelle.
+
 ## Contraintes de déploiement
 
 - **`CGO_ENABLED=0` est obligatoire.** C'est ce qui produit un binaire statique

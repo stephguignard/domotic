@@ -16,6 +16,7 @@ import (
 	"github.com/stephguignard/domotic/internal/hue"
 	"github.com/stephguignard/domotic/internal/netatmo"
 	"github.com/stephguignard/domotic/internal/poller"
+	"github.com/stephguignard/domotic/internal/scenes"
 	"github.com/stephguignard/domotic/internal/shelly"
 	"github.com/stephguignard/domotic/internal/store"
 	"github.com/stephguignard/domotic/internal/tahoma"
@@ -34,6 +35,7 @@ type Deps struct {
 	// Control pilote les équipements et consigne les actions ; il sait quelles
 	// sources sont configurées.
 	Control *control.Controller
+	Scenes  *scenes.Engine
 	Log     *slog.Logger
 }
 
@@ -51,6 +53,7 @@ func Register(api huma.API, d Deps) {
 	registerMeasurements(api, d)
 	registerCommands(api, d)
 	registerRooms(api, d)
+	registerScenes(api, d)
 	registerHealth(api, d)
 }
 
