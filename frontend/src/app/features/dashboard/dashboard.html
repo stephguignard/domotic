@@ -25,6 +25,23 @@
     </p-message>
   }
 
+  @if (scenes.dashboardScenes().length > 0) {
+    <div class="scene-buttons mb-4 flex flex-wrap gap-2" aria-label="Scènes">
+      @for (scene of scenes.dashboardScenes(); track scene.id) {
+        <p-button
+          class="scene-button"
+          [label]="scene.name"
+          icon="pi pi-play"
+          severity="secondary"
+          [outlined]="true"
+          size="small"
+          [loading]="scene.running"
+          (onClick)="scenes.run(scene)"
+        />
+      }
+    </div>
+  }
+
   @if (store.rooms().length > 1) {
     <div class="mb-2 flex justify-end">
       <app-room-order />

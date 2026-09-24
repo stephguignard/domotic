@@ -4,7 +4,16 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Dashboard } from './dashboard';
 import { Device } from '../../api';
 import { DevicesStore } from '../../core/devices.store';
-import { flushRoomOrder, makeDevice, makeLight, makeRelay, makeStation, testProviders } from '../../testing/providers';
+import {
+  flushRoomOrder,
+  flushScenes,
+  makeDevice,
+  makeLight,
+  makeRelay,
+  makeScene,
+  makeStation,
+  testProviders,
+} from '../../testing/providers';
 
 describe('Dashboard', () => {
   let http: HttpTestingController;
@@ -18,7 +27,10 @@ describe('Dashboard', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    flushScenes();
+    http.verify();
+  });
 
   /**
    * Remplit le store puis rend le composant.
@@ -167,5 +179,24 @@ describe('Dashboard', () => {
     expect(lit.querySelector<HTMLElement>('.power-icon')?.style.color).toBe('rgb(255, 179, 92)');
     expect(dark.classList).not.toContain('lit');
     expect(dark.querySelector('.power-icon')?.classList).toContain('text-muted');
+  });
+
+  it('affiche un bouton par scène demandée sur le tableau de bord, et la lance', async () => {
+    const fixture = await render([makeDevice()]);
+    flushScenes([
+      makeScene({ id: 1, name: 'Soirée' }),
+      makeScene({ id: 2, name: 'Réveil', show_on_dashboard: false }),
+    ]);
+    await fixture.whenStable();
+
+    const buttons = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll('.scene-button button'),
+    ];
+    expect(buttons.map((b) => b.textContent?.trim())).toEqual(['Soirée']);
+
+    (buttons[0] as HTMLButtonElement).click();
+    const req = http.expectOne('/api/scenes/1/run');
+    expect(req.request.method).toBe('POST');
+    req.flush(makeScene({ id: 1, running: true }));
   });
 });

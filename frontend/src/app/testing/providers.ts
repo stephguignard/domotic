@@ -14,7 +14,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 
-import { Device, provideApi } from '../api';
+import { Device, SceneView, provideApi } from '../api';
 import { routes } from '../app.routes';
 
 /** Providers nécessaires à tout composant de l'application. */
@@ -104,6 +104,36 @@ export function flushRefresh(devices: Device[] = [], roomOrder: string[] = []): 
       tahoma: { enabled: true, healthy: true },
     },
   });
+}
+
+/** Construit une scène de test, surchargeable champ par champ. */
+export function makeScene(overrides: Partial<SceneView> = {}): SceneView {
+  return {
+    id: 1,
+    name: 'Soirée',
+    show_on_dashboard: true,
+    steps: [
+      {
+        type: 'action',
+        command: 'on',
+        parameters: [],
+        targets: { devices: [], rooms: ['Salon'], kinds: [] },
+      },
+    ],
+    schedules: [],
+    running: false,
+    touches_relays: false,
+    created_at: '2026-09-24T08:00:00Z',
+    updated_at: '2026-09-24T08:00:00Z',
+    ...overrides,
+  };
+}
+
+/** Répond à la lecture des scènes, secondaire pour la plupart des cas. */
+export function flushScenes(scenes: SceneView[] = []): void {
+  TestBed.inject(HttpTestingController)
+    .match('/api/scenes')
+    .forEach((req) => req.flush({ scenes, solar_available: true, time_zone: 'Europe/Zurich' }));
 }
 
 /** Répond à la lecture de l'ordre des pièces que `DevicesStore.refresh()` déclenche. */

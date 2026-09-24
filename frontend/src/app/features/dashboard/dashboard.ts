@@ -22,6 +22,7 @@ import {
   sourceSeverity,
 } from '../../core/device-state';
 import { DevicesStore } from '../../core/devices.store';
+import { ScenesStore } from '../../core/scenes.store';
 import { RoomOrder } from './room-order';
 
 /** Une grandeur prête à afficher sur une carte. */
@@ -45,6 +46,11 @@ interface Reading {
 })
 export class Dashboard {
   protected readonly store = inject(DevicesStore);
+  protected readonly scenes = inject(ScenesStore);
+
+  constructor() {
+    this.scenes.load();
+  }
 
   protected readonly kindLabel = kindLabel;
   protected readonly kindIcon = kindIcon;

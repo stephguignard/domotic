@@ -214,6 +214,12 @@ relais.
 - **Historique** : toutes les actions faites depuis l'interface (commandes,
   réussies ou non, et changements de pièce) sont conservées un an, sur la page
   *Historique* et dans la fiche de chaque équipement.
+- **Scènes** : une scène enchaîne des actions (allumer, éteindre, ouvrir, fermer,
+  luminosité, blanc, couleur) et des attentes, sur des équipements ou des pièces.
+  Elle se lance d'un bouton sur le tableau de bord, ou par ses horaires : jours de
+  la semaine, à heure fixe ou au lever/coucher du soleil (± décalage, bornes
+  facultatives). Renseigner `DOMOTIC_TIMEZONE`, et `DOMOTIC_LATITUDE` /
+  `DOMOTIC_LONGITUDE` pour les horaires solaires.
 - **Lumières Hue** : luminosité, blanc (2000 à 6500 K) et couleur se règlent
   depuis la fiche de la lampe. Un équipement allumé apparaît dans sa couleur.
 
