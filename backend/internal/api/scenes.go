@@ -14,7 +14,7 @@ import (
 // ListScenesOutput est la réponse de la liste des scènes.
 type ListScenesOutput struct {
 	Body struct {
-		Scenes []scenes.SceneView `json:"scenes" nullable:"false" doc:"Scènes, par nom"`
+		Scenes []scenes.SceneView `json:"scenes" nullable:"false" doc:"Scènes, dans l'ordre d'affichage"`
 		// Ces deux champs permettent à l'interface de ne proposer que les
 		// horaires que le service sait calculer.
 		SolarAvailable bool   `json:"solar_available" doc:"Les horaires solaires sont-ils disponibles (coordonnées configurées) ?"`
@@ -41,6 +41,16 @@ type UpdateSceneInput struct {
 // SceneOutput renvoie une scène.
 type SceneOutput struct {
 	Body scenes.SceneView
+}
+
+// SceneOrderBody porte l'ordre d'affichage des scènes.
+type SceneOrderBody struct {
+	IDs []int64 `json:"ids" nullable:"false" maxItems:"200" doc:"Scènes, dans l'ordre d'affichage ; vide pour revenir à l'ordre alphabétique"`
+}
+
+// SceneOrderInput porte le nouvel ordre des scènes.
+type SceneOrderInput struct {
+	Body SceneOrderBody
 }
 
 // ResolveInput porte des étapes dont on veut connaître les cibles.
@@ -79,24 +89,32 @@ func registerScenes(api huma.API, d Deps) {
 		Summary:     "Lister les scènes",
 		Tags:        []string{"Scenes"},
 	}, func(ctx context.Context, _ *struct{}) (*ListScenesOutput, error) {
-		list, err := d.Store.ListScenes(ctx)
-		if err != nil {
-			return nil, huma.Error500InternalServerError("lecture des scènes", err)
-		}
-		devices, err := d.Store.ListDevices(ctx, store.DeviceFilter{})
-		if err != nil {
-			return nil, huma.Error500InternalServerError("lecture des équipements", err)
-		}
+		return d.listScenes(ctx)
+	})
 
-		out := &ListScenesOutput{}
-		out.Body.Scenes = make([]scenes.SceneView, 0, len(list))
-		for _, sc := range list {
-			out.Body.Scenes = append(out.Body.Scenes, d.Scenes.Describe(sc, devices))
+	huma.Register(api, huma.Operation{
+		OperationID: "set-scene-order",
+		Method:      http.MethodPut,
+		Path:        "/api/scenes/order",
+		Summary:     "Choisir l'ordre des scènes",
+		Description: "Range les scènes dans l'ordre donné, sur la page Scènes comme sur le tableau de bord. " +
+			"Les scènes absentes de la liste passent après, par nom ; une liste vide revient à l'ordre alphabétique.",
+		Tags: []string{"Scenes"},
+	}, func(ctx context.Context, in *SceneOrderInput) (*ListScenesOutput, error) {
+		seen := map[int64]bool{}
+		for _, id := range in.Body.IDs {
+			if seen[id] {
+				return nil, huma.Error422UnprocessableEntity("scène en double dans l'ordre")
+			}
+			seen[id] = true
 		}
-		place := d.Scenes.Place()
-		out.Body.SolarAvailable = place.HasCoordinates
-		out.Body.TimeZone = place.TimeZone.String()
-		return out, nil
+		if err := d.Store.SetSceneOrder(ctx, in.Body.IDs); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				return nil, huma.Error422UnprocessableEntity("scène inconnue dans l'ordre")
+			}
+			return nil, huma.Error500InternalServerError("enregistrement de l'ordre des scènes", err)
+		}
+		return d.listScenes(ctx)
 	})
 
 	huma.Register(api, huma.Operation{
@@ -206,6 +224,27 @@ func registerScenes(api huma.API, d Deps) {
 		}
 		return out, nil
 	})
+}
+
+func (d Deps) listScenes(ctx context.Context) (*ListScenesOutput, error) {
+	list, err := d.Store.ListScenes(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("lecture des scènes", err)
+	}
+	devices, err := d.Store.ListDevices(ctx, store.DeviceFilter{})
+	if err != nil {
+		return nil, huma.Error500InternalServerError("lecture des équipements", err)
+	}
+
+	out := &ListScenesOutput{}
+	out.Body.Scenes = make([]scenes.SceneView, 0, len(list))
+	for _, sc := range list {
+		out.Body.Scenes = append(out.Body.Scenes, d.Scenes.Describe(sc, devices))
+	}
+	place := d.Scenes.Place()
+	out.Body.SolarAvailable = place.HasCoordinates
+	out.Body.TimeZone = place.TimeZone.String()
+	return out, nil
 }
 
 func (d Deps) sceneView(ctx context.Context, id int64) (*SceneOutput, error) {

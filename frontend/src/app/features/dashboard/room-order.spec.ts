@@ -36,14 +36,14 @@ describe('RoomOrder', () => {
     await fixture.whenStable();
 
     (fixture.nativeElement as HTMLElement)
-      .querySelector<HTMLButtonElement>('.open-room-order button')!
+      .querySelector<HTMLButtonElement>('.open-order button')!
       .click();
     await fixture.whenStable();
     return fixture;
   }
 
   function items(): string[] {
-    return [...document.querySelectorAll('.room-item')].map((el) => el.textContent?.trim() ?? '');
+    return [...document.querySelectorAll('.order-item')].map((el) => el.textContent?.trim() ?? '');
   }
 
   function click(selector: string): void {
@@ -60,7 +60,7 @@ describe('RoomOrder', () => {
 
     // Faire monter « Lily » en tête, comme avec les flèches de la liste.
     const list = fixture.debugElement.query(By.directive(OrderList)).componentInstance as OrderList;
-    list.selection = ['Lily'];
+    list.selection = [list.value!.find((i: { key: string }) => i.key === 'Lily')];
     list.moveTop();
     await fixture.whenStable();
     expect(items()).toEqual(['Lily', 'Salon', 'Cuisine']);

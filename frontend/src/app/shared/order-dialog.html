@@ -1,6 +1,6 @@
 <p-button
-  class="open-room-order"
-  label="Organiser les pièces"
+  class="open-order"
+  [label]="buttonLabel()"
   icon="pi pi-sort-alt"
   severity="secondary"
   size="small"
@@ -9,7 +9,7 @@
 />
 
 <p-dialog
-  header="Ordre des pièces"
+  [header]="header()"
   [modal]="true"
   [dismissableMask]="true"
   [visible]="visible()"
@@ -18,15 +18,17 @@
   [breakpoints]="{ '575px': '94vw' }"
 >
   <p class="mb-3 text-sm text-muted">
-    Glissez les pièces, ou sélectionnez-en une et utilisez les flèches. « Sans pièce » reste en
-    dernier.
+    Glissez les éléments, ou sélectionnez-en un et utilisez les flèches.
+    @if (hint()) {
+      {{ hint() }}
+    }
   </p>
 
-  <p-orderList [value]="draft" [dragdrop]="true" scrollHeight="22rem" ariaLabel="Pièces">
-    <ng-template #item let-room>
-      <span class="room-item inline-flex items-center gap-2">
+  <p-orderList [value]="draft" [dragdrop]="true" scrollHeight="22rem" [ariaLabel]="header()">
+    <ng-template #item let-item>
+      <span class="order-item inline-flex items-center gap-2">
         <i class="pi pi-bars text-muted"></i>
-        {{ room }}
+        {{ item.label }}
       </span>
     </ng-template>
   </p-orderList>

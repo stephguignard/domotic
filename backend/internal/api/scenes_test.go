@@ -120,6 +120,27 @@ func TestScenesAPI(t *testing.T) {
 		t.Errorf("entrée : %+v", e)
 	}
 
+	// Ordre : une deuxième scène, placée en tête.
+	spec["name"] = "Réveil"
+	spec["schedules"] = []any{}
+	resp = api.Post("/api/scenes", spec)
+	var second scenes.SceneView
+	if err := json.Unmarshal(resp.Body.Bytes(), &second); err != nil || resp.Code != http.StatusCreated {
+		t.Fatalf("deuxième scène : %d %s", resp.Code, resp.Body.String())
+	}
+	resp = api.Put("/api/scenes/order", map[string]any{"ids": []int64{second.ID, created.ID}})
+	var list struct {
+		Scenes []scenes.SceneView `json:"scenes"`
+	}
+	if err := json.Unmarshal(resp.Body.Bytes(), &list); err != nil || len(list.Scenes) != 2 || list.Scenes[0].Name != "Réveil" {
+		t.Errorf("ordre : %d %s", resp.Code, resp.Body.String())
+	}
+	for _, bad := range [][]int64{{second.ID, second.ID}, {999}} {
+		if resp := api.Put("/api/scenes/order", map[string]any{"ids": bad}); resp.Code != http.StatusUnprocessableEntity {
+			t.Errorf("ordre %v : statut %d, attendu 422", bad, resp.Code)
+		}
+	}
+
 	if resp := api.Delete(path); resp.Code != http.StatusNoContent {
 		t.Errorf("suppression : statut %d", resp.Code)
 	}

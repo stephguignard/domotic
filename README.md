@@ -219,7 +219,8 @@ relais.
   Elle se lance d'un bouton sur le tableau de bord, ou par ses horaires : jours de
   la semaine, à heure fixe ou au lever/coucher du soleil (± décalage, bornes
   facultatives). Renseigner `DOMOTIC_TIMEZONE`, et `DOMOTIC_LATITUDE` /
-  `DOMOTIC_LONGITUDE` pour les horaires solaires.
+  `DOMOTIC_LONGITUDE` pour les horaires solaires. *Organiser les scènes* règle
+  leur ordre, sur la page Scènes comme sur le tableau de bord.
 - **Lumières Hue** : luminosité, blanc (2000 à 6500 K) et couleur se règlent
   depuis la fiche de la lampe. Un équipement allumé apparaît dans sa couleur.
 

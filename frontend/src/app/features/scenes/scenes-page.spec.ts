@@ -2,6 +2,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Confirmation, ConfirmationService } from '@openng/optimus-ui/api';
+import { OrderList } from '@openng/optimus-ui/orderlist';
 
 import { ScenesPage } from './scenes-page';
 import { SceneEditor, toSpec } from './scene-editor';
@@ -177,6 +178,41 @@ describe('ScenesPage', () => {
       'Coucher du soleil — coordonnées non configurées',
     ]);
     expect(document.querySelector('.utc-warning')?.textContent).toContain('DOMOTIC_TIMEZONE');
+  });
+
+  it("réordonne les scènes et l'enregistre", async () => {
+    const fixture = await render([
+      makeScene({ id: 1, name: 'Soirée' }),
+      makeScene({ id: 2, name: 'Réveil' }),
+    ]);
+
+    el(fixture).querySelector<HTMLButtonElement>('.scene-order .open-order button')!.click();
+    await fixture.whenStable();
+    const list = fixture.debugElement.query(By.directive(OrderList)).componentInstance as OrderList;
+    list.selection = [list.value!.find((i: { key: number }) => i.key === 2)];
+    list.moveUp();
+    await fixture.whenStable();
+
+    document.querySelector<HTMLButtonElement>('.save-order button')!.click();
+    const req = http.expectOne('/api/scenes/order');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ ids: [2, 1] });
+    req.flush({
+      scenes: [makeScene({ id: 2, name: 'Réveil' }), makeScene({ id: 1, name: 'Soirée' })],
+      solar_available: false,
+      time_zone: 'Europe/Zurich',
+    });
+    await fixture.whenStable();
+
+    const titles = [...el(fixture).querySelectorAll('.scene-card h2')].map((h) =>
+      h.textContent?.trim(),
+    );
+    expect(titles).toEqual(['Réveil', 'Soirée']);
+  });
+
+  it("ne propose pas d'ordonner une scène seule", async () => {
+    const fixture = await render([makeScene()]);
+    expect(el(fixture).querySelector('.scene-order')).toBeNull();
   });
 });
 

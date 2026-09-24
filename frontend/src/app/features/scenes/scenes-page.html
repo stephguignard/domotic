@@ -6,12 +6,25 @@
       automatiquement.
     </p>
   </div>
-  <p-button
-    class="new-scene"
-    label="Nouvelle scène"
-    icon="pi pi-plus"
-    (onClick)="editor().open()"
-  />
+  <span class="inline-flex flex-wrap items-center gap-2">
+    @if (scenes.scenes().length > 1) {
+      <app-order-dialog
+        class="scene-order"
+        buttonLabel="Organiser les scènes"
+        header="Ordre des scènes"
+        hint="L'ordre vaut aussi pour les boutons du tableau de bord."
+        [items]="orderItems()"
+        (saved)="scenes.saveOrder($event)"
+        (reset)="scenes.saveOrder([])"
+      />
+    }
+    <p-button
+      class="new-scene"
+      label="Nouvelle scène"
+      icon="pi pi-plus"
+      (onClick)="editor().open()"
+    />
+  </span>
 </div>
 
 @if (scenes.loaded() && scenes.scenes().length === 0) {

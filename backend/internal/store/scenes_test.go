@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -74,5 +75,60 @@ func TestSceneLifecycle(t *testing.T) {
 	}
 	if err := s.DeleteScene(ctx, created.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("double suppression: %v", err)
+	}
+}
+
+func TestSceneOrder(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+
+	names := func() []string {
+		all, err := s.ListScenes(ctx)
+		if err != nil {
+			t.Fatalf("ListScenes: %v", err)
+		}
+		out := make([]string, len(all))
+		for i, sc := range all {
+			out[i] = sc.Name
+		}
+		return out
+	}
+	create := func(name string) int64 {
+		spec := testScene()
+		spec.Name = name
+		sc, err := s.CreateScene(ctx, spec)
+		if err != nil {
+			t.Fatalf("CreateScene: %v", err)
+		}
+		return sc.ID
+	}
+
+	// Chaque nouvelle scène prend la dernière place, quel que soit son nom.
+	soir, reveil, absence := create("Soirée"), create("Réveil"), create("Absence")
+	if got := fmt.Sprint(names()); got != "[Soirée Réveil Absence]" {
+		t.Errorf("ordre de création = %s", got)
+	}
+
+	if err := s.SetSceneOrder(ctx, []int64{absence, soir, reveil}); err != nil {
+		t.Fatalf("SetSceneOrder: %v", err)
+	}
+	if got := fmt.Sprint(names()); got != "[Absence Soirée Réveil]" {
+		t.Errorf("ordre choisi = %s", got)
+	}
+
+	// Un identifiant inconnu est refusé sans rien changer.
+	if err := s.SetSceneOrder(ctx, []int64{reveil, 999}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("identifiant inconnu : %v", err)
+	}
+	if got := fmt.Sprint(names()); got != "[Absence Soirée Réveil]" {
+		t.Errorf("ordre modifié malgré l'échec = %s", got)
+	}
+
+	// Liste vide : ordre alphabétique.
+	if err := s.SetSceneOrder(ctx, nil); err != nil {
+		t.Fatalf("SetSceneOrder vide: %v", err)
+	}
+	if got := fmt.Sprint(names()); got != "[Absence Réveil Soirée]" {
+		t.Errorf("ordre alphabétique = %s", got)
 	}
 }

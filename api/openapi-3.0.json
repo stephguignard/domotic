@@ -453,7 +453,7 @@
             "type": "string"
           },
           "scenes": {
-            "description": "Scènes, par nom",
+            "description": "Scènes, dans l'ordre d'affichage",
             "items": {
               "$ref": "#/components/schemas/SceneView"
             },
@@ -625,6 +625,31 @@
         },
         "required": [
           "rooms"
+        ],
+        "type": "object"
+      },
+      "SceneOrderBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "example": "//schemas/SceneOrderBody.json",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "ids": {
+            "description": "Scènes, dans l'ordre d'affichage ; vide pour revenir à l'ordre alphabétique",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 200,
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
         ],
         "type": "object"
       },
@@ -1585,6 +1610,48 @@
           }
         },
         "summary": "Créer une scène",
+        "tags": [
+          "Scenes"
+        ]
+      }
+    },
+    "/api/scenes/order": {
+      "put": {
+        "description": "Range les scènes dans l'ordre donné, sur la page Scènes comme sur le tableau de bord. Les scènes absentes de la liste passent après, par nom ; une liste vide revient à l'ordre alphabétique.",
+        "operationId": "set-scene-order",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneOrderBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListScenesOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Choisir l'ordre des scènes",
         "tags": [
           "Scenes"
         ]

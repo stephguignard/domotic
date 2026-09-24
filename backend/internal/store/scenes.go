@@ -69,9 +69,11 @@ const (
 const sceneColumns = `id, name, show_on_dashboard, steps, schedules, last_run_at, last_trigger, last_status,
 	created_at, updated_at`
 
-// ListScenes retourne les scènes, par nom.
+// ListScenes retourne les scènes dans l'ordre choisi, les scènes non classées
+// ensuite, par nom.
 func (s *Store) ListScenes(ctx context.Context) ([]Scene, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+sceneColumns+` FROM scene ORDER BY name COLLATE NOCASE, id`)
+	rows, err := s.db.QueryContext(ctx, `SELECT `+sceneColumns+` FROM scene
+		ORDER BY position IS NULL, position, name COLLATE NOCASE, id`)
 	if err != nil {
 		return nil, fmt.Errorf("liste des scènes: %w", err)
 	}
@@ -104,9 +106,10 @@ func (s *Store) CreateScene(ctx context.Context, spec SceneSpec) (Scene, error) 
 		return Scene{}, err
 	}
 	now := time.Now().UTC()
+	// Une nouvelle scène prend la dernière place.
 	res, err := s.db.ExecContext(ctx, `
-		INSERT INTO scene (name, show_on_dashboard, steps, schedules, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
+		INSERT INTO scene (name, show_on_dashboard, steps, schedules, position, created_at, updated_at)
+		VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(position) + 1, 0) FROM scene), ?, ?)`,
 		spec.Name, spec.ShowOnDashboard, steps, schedules, now, now)
 	if err != nil {
 		return Scene{}, fmt.Errorf("création de la scène: %w", err)
@@ -133,6 +136,31 @@ func (s *Store) UpdateScene(ctx context.Context, id int64, spec SceneSpec) (Scen
 		return Scene{}, err
 	}
 	return s.GetScene(ctx, id)
+}
+
+// SetSceneOrder range les scènes dans l'ordre donné. Les scènes absentes de la
+// liste passent après, par nom ; une liste vide revient à l'ordre alphabétique.
+// Un identifiant inconnu fait tout échouer (ErrNotFound), sans rien modifier.
+func (s *Store) SetSceneOrder(ctx context.Context, ids []int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("ordre des scènes: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // sans effet après un Commit réussi
+
+	if _, err := tx.ExecContext(ctx, `UPDATE scene SET position = NULL`); err != nil {
+		return fmt.Errorf("ordre des scènes: %w", err)
+	}
+	for i, id := range ids {
+		res, err := tx.ExecContext(ctx, `UPDATE scene SET position = ? WHERE id = ?`, i, id)
+		if err := affectedOne(res, err, "ordre des scènes"); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("ordre des scènes: %w", err)
+	}
+	return nil
 }
 
 // DeleteScene supprime une scène. Son historique reste, sous son nom d'alors.

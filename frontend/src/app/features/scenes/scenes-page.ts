@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, viewChild } from '@angular/core';
+import { Component, computed, inject, viewChild } from '@angular/core';
 import { ButtonModule } from '@openng/optimus-ui/button';
 import { CardModule } from '@openng/optimus-ui/card';
 import { TagModule } from '@openng/optimus-ui/tag';
@@ -7,12 +7,13 @@ import { TagModule } from '@openng/optimus-ui/tag';
 import { DevicesStore } from '../../core/devices.store';
 import { describeSchedule, describeStep, sceneStatus } from '../../core/scene-format';
 import { ScenesStore } from '../../core/scenes.store';
+import { OrderDialog } from '../../shared/order-dialog';
 import { SceneEditor } from './scene-editor';
 
 /** Page des scènes : leur contenu, leurs horaires, leur dernière exécution. */
 @Component({
   selector: 'app-scenes-page',
-  imports: [DatePipe, ButtonModule, CardModule, TagModule, SceneEditor],
+  imports: [DatePipe, ButtonModule, CardModule, TagModule, OrderDialog, SceneEditor],
   templateUrl: './scenes-page.html',
 })
 export class ScenesPage {
@@ -23,6 +24,11 @@ export class ScenesPage {
 
   protected readonly describeSchedule = describeSchedule;
   protected readonly sceneStatus = sceneStatus;
+
+  /** Scènes à ordonner, dans leur ordre actuel. */
+  protected readonly orderItems = computed(() =>
+    this.scenes.scenes().map((s) => ({ key: s.id, label: s.name })),
+  );
 
   constructor() {
     this.scenes.load();

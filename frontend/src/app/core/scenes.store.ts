@@ -20,7 +20,7 @@ export class ScenesStore {
   private readonly timeZoneSignal = signal('');
   private readonly loadedSignal = signal(false);
 
-  /** Scènes, par nom. */
+  /** Scènes, dans l'ordre choisi par l'utilisateur. */
   readonly scenes = this.scenesSignal.asReadonly();
   /** Les horaires solaires sont-ils disponibles ? */
   readonly solarAvailable = this.solarSignal.asReadonly();
@@ -100,9 +100,8 @@ export class ScenesStore {
     return request.pipe(
       tap((saved) => {
         this.scenesSignal.update((all) =>
-          id === undefined
-            ? [...all, saved].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
-            : all.map((s) => (s.id === saved.id ? saved : s)),
+          // Une nouvelle scène prend la dernière place, comme côté backend.
+          id === undefined ? [...all, saved] : all.map((s) => (s.id === saved.id ? saved : s)),
         );
         this.messages.add({
           severity: 'success',
@@ -111,6 +110,30 @@ export class ScenesStore {
         });
       }),
     );
+  }
+
+  /** Enregistre l'ordre des scènes ; une liste vide revient à l'ordre alphabétique. */
+  saveOrder(ids: number[]): void {
+    this.api.setSceneOrder({ ids }).subscribe({
+      next: (res) => {
+        this.scenesSignal.set(res.scenes);
+        this.messages.add({
+          severity: 'success',
+          summary: 'Scènes',
+          detail: ids.length
+            ? 'Ordre des scènes enregistré'
+            : 'Scènes rangées par ordre alphabétique',
+        });
+      },
+      error: (err: unknown) => {
+        this.messages.add({
+          severity: 'error',
+          summary: 'Scènes',
+          detail: describeError(err),
+          life: 8000,
+        });
+      },
+    });
   }
 
   /** Supprime une scène, après confirmation. */
