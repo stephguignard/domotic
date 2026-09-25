@@ -154,6 +154,17 @@ par `styleClass` — qui accepte directement des classes Tailwind, d'où l'absen
 optimus, components, utilities` de `src/styles.css` et l'option `cssLayer` passée à
 `provideOptimus`. Le rompre laisse le preflight de Tailwind écraser les composants.
 
+**Mobile d'abord.** La navigation est un `p-menubar` (hamburger sous 960 px), le zoom
+est bloqué (`index.html`, `touch-action: manipulation`). Sur petit écran, les tableaux
+masquent leurs colonnes secondaires (`max-sm:hidden`, `max-md:hidden`) et replient
+l'essentiel dans la première cellule. Les dates passent par `DatePipe` en `fr-FR`
+(`LOCALE_ID`, aussi fourni par `testProviders()`).
+
+Piège : l'élément `<p-menubar>` porte lui-même la classe `.p-menubar`. Une règle
+`display` dans le CSS du composant hôte, hors couche, écrase le `display: flex` du
+thème et empile la barre. Le menubar appelle aussi `window.matchMedia`, absent de
+jsdom : `src/test-setup.ts` le bouchonne.
+
 Une couleur du thème absente du plugin (qui ne mappe que `primary-*` et `surface-*`)
 se déclare dans le `@theme inline` de `src/styles.css` plutôt qu'en valeur arbitraire
 dans les templates.

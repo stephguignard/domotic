@@ -1,24 +1,33 @@
-<p-toast position="bottom-right" />
-<p-confirmdialog styleClass="max-w-md" />
+<!-- En bas sur ordinateur ; en haut et sur toute la largeur sur téléphone,
+     où le bas de l'écran est occupé par la barre du navigateur. -->
+<p-toast
+  position="bottom-right"
+  [breakpoints]="{ '640px': { width: '100%', right: '0', left: '0', bottom: '0' } }"
+/>
+<p-confirmdialog styleClass="max-w-md" [breakpoints]="{ '640px': '94vw' }" />
 
-<p-toolbar styleClass="app-toolbar">
+<p-menubar
+  [model]="menu"
+  styleClass="app-menubar rounded-none border-x-0 border-t-0 px-4 py-2 max-sm:px-2
+    pt-[max(0.5rem,env(safe-area-inset-top))]
+    [&_.p-menubar-item-link-active]:bg-highlight [&_.p-menubar-item-link-active]:text-on-highlight
+    [&_.p-menubar-item-link-active_.p-menubar-item-icon]:text-on-highlight"
+>
   <ng-template #start>
-    <span class="mr-8 inline-flex items-center gap-2 text-lg font-semibold">
+    <a routerLink="/dashboard" class="mr-4 inline-flex items-center gap-2 text-lg font-semibold text-body no-underline">
       <i class="pi pi-home text-primary"></i>
-      <span class="max-sm:hidden">Domotic</span>
-    </span>
-
-    <nav class="inline-flex gap-1">
-      <a routerLink="/dashboard" routerLinkActive="active" class="px-3.5 py-2 rounded-content text-muted no-underline transition-colors hover:bg-content-hover hover:text-body [&.active]:bg-highlight [&.active]:text-on-highlight">Tableau de bord</a>
-      <a routerLink="/devices" routerLinkActive="active" class="px-3.5 py-2 rounded-content text-muted no-underline transition-colors hover:bg-content-hover hover:text-body [&.active]:bg-highlight [&.active]:text-on-highlight">Équipements</a>
-      <a routerLink="/scenes" routerLinkActive="active" class="px-3.5 py-2 rounded-content text-muted no-underline transition-colors hover:bg-content-hover hover:text-body [&.active]:bg-highlight [&.active]:text-on-highlight">Scènes</a>
-      <a routerLink="/history" routerLinkActive="active" class="px-3.5 py-2 rounded-content text-muted no-underline transition-colors hover:bg-content-hover hover:text-body [&.active]:bg-highlight [&.active]:text-on-highlight">Historique</a>
-    </nav>
+      Domotic
+    </a>
   </ng-template>
 
   <ng-template #end>
-    <div class="inline-flex items-center gap-3">
-      <p-tag [value]="healthTag().label" [severity]="healthTag().severity" />
+    <div class="inline-flex items-center gap-2">
+      <p-tag
+        class="health-tag"
+        [value]="healthTag().label"
+        [severity]="healthTag().severity"
+        styleClass="max-w-40 truncate max-sm:max-w-28"
+      />
       <p-button
         icon="pi pi-refresh"
         severity="secondary"
@@ -30,8 +39,8 @@
       />
     </div>
   </ng-template>
-</p-toolbar>
+</p-menubar>
 
-<main class="mx-auto max-w-[90rem] p-6 max-sm:px-3 max-sm:py-4">
+<main class="mx-auto max-w-[90rem] p-6 max-sm:px-3 max-sm:py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
   <router-outlet />
 </main>

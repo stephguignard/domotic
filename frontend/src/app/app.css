@@ -1,20 +1,19 @@
-/* Le layout et les états du lien de navigation sont écrits en utilitaires dans
- * le template. Ne restent ici que les deux règles qu'ils n'atteignent pas :
- * l'hôte du composant, et la barre Optimus visée par `styleClass`. */
+/* Le layout est écrit en utilitaires dans le template. Ne restent ici que
+ * l'hôte du composant et le positionnement de la barre, qui porte sur le
+ * composant Optimus lui-même. */
 
 :host {
   display: block;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--p-content-background);
 }
 
-/* La barre reste visible au défilement et s'étend d'un bord à l'autre. */
-.app-toolbar {
+/* La barre reste visible au défilement. Ne pas toucher à `display` : l'élément
+ * <p-menubar> porte lui-même la classe .p-menubar, et ces règles hors couche
+ * écraseraient le `display: flex` du thème. */
+p-menubar {
   position: sticky;
   top: 0;
   z-index: 10;
-  border-radius: 0;
-  border-top: 0;
-  border-right: 0;
-  border-left: 0;
 }

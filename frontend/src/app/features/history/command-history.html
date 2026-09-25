@@ -17,13 +17,16 @@
     dataKey="id"
     currentPageReportTemplate="{first} à {last} sur {totalRecords}"
     [showCurrentPageReport]="entries().length > 20"
+    styleClass="max-sm:[&_td]:px-2 max-sm:[&_th]:px-2"
   >
     <ng-template #header>
       <tr>
-        <th class="w-px whitespace-nowrap">Date</th>
+        <!-- Sur téléphone, date et équipement passent dans la cellule Action,
+             la source disparaît : la ligne tient sans défilement horizontal. -->
+        <th class="w-px whitespace-nowrap max-sm:hidden">Date</th>
         @if (!deviceId()) {
-          <th>Équipement</th>
-          <th>Source</th>
+          <th class="max-sm:hidden">Équipement</th>
+          <th class="max-md:hidden">Source</th>
         }
         <th>Action</th>
         <th class="w-px whitespace-nowrap">Résultat</th>
@@ -32,11 +35,11 @@
 
     <ng-template #body let-entry>
       <tr class="history-row">
-        <td class="whitespace-nowrap tabular-nums text-muted">
+        <td class="whitespace-nowrap tabular-nums text-muted max-sm:hidden">
           {{ entry.created_at | date: 'dd/MM/yyyy HH:mm:ss' }}
         </td>
         @if (!deviceId()) {
-          <td>
+          <td class="max-sm:hidden">
             <a
               [routerLink]="['/devices', entry.device_id]"
               class="inline-flex items-center gap-2 font-medium text-inherit no-underline hover:underline"
@@ -45,11 +48,19 @@
               {{ entry.device_name }}
             </a>
           </td>
-          <td>
+          <td class="max-md:hidden">
             <p-tag [value]="sourceLabel(entry.source)" [severity]="sourceSeverity(entry.source)" />
           </td>
         }
         <td class="action">
+          @if (!deviceId()) {
+            <a
+              [routerLink]="['/devices', entry.device_id]"
+              class="block font-medium text-inherit no-underline sm:hidden"
+            >
+              {{ entry.device_name }}
+            </a>
+          }
           {{ actionLabel(entry.device_kind, entry.command, entry.parameters) }}
           @if (entry.origin !== 'interface') {
             <span class="origin ml-2 inline-flex items-center gap-1 text-xs text-muted">
@@ -57,6 +68,9 @@
               {{ entry.scene_name }}
             </span>
           }
+          <span class="block text-xs tabular-nums text-muted sm:hidden">
+            {{ entry.created_at | date: 'EEE d MMM HH:mm' }}
+          </span>
         </td>
         <td class="w-px whitespace-nowrap">
           @if (entry.success) {

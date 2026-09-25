@@ -26,10 +26,15 @@
   }
 
   @if (scenes.dashboardScenes().length > 0) {
-    <div class="scene-buttons mb-4 flex flex-wrap gap-2" aria-label="Scènes">
+    <!-- Sur téléphone, une seule rangée qui défile : les scènes restent à
+         portée de pouce sans repousser les équipements hors de l'écran. -->
+    <div
+      class="scene-buttons mb-4 flex gap-2 overflow-x-auto pb-1 max-sm:-mx-3 max-sm:px-3 sm:flex-wrap"
+      aria-label="Scènes"
+    >
       @for (scene of scenes.dashboardScenes(); track scene.id) {
         <p-button
-          class="scene-button"
+          class="scene-button shrink-0"
           [label]="scene.name"
           icon="pi pi-play"
           severity="secondary"
@@ -42,61 +47,106 @@
     </div>
   }
 
-  @if (store.rooms().length > 1) {
-    <div class="mb-2 flex justify-end">
-      <app-room-order />
-    </div>
+  <div class="dashboard-filters mb-5 grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
+    <p-select
+      class="kind-filter"
+      [options]="kindOptions()"
+      [ngModel]="kindFilter()"
+      (ngModelChange)="kindFilter.set($event)"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Tous types"
+      [showClear]="true"
+      styleClass="w-full sm:w-52"
+      ariaLabel="Filtrer par type"
+    />
+    <p-select
+      class="room-filter"
+      [options]="roomOptions()"
+      [ngModel]="roomFilter()"
+      (ngModelChange)="roomFilter.set($event)"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Toutes pièces"
+      [showClear]="true"
+      styleClass="w-full sm:w-52"
+      ariaLabel="Filtrer par pièce"
+    />
+    @if (filtered()) {
+      <span class="filter-summary text-sm text-muted max-sm:col-span-2">
+        {{ visibleCount() }} équipement{{ visibleCount() > 1 ? 's' : '' }}
+        <button type="button" class="reset-filters ml-1 text-primary underline" (click)="resetFilters()">
+          Tout afficher
+        </button>
+      </span>
+    }
+    @if (store.rooms().length > 1) {
+      <app-room-order class="justify-self-end max-sm:col-span-2 sm:ml-auto" />
+    }
+  </div>
+
+  @if (groups().length === 0) {
+    <p class="no-match py-8 text-center text-muted">Aucun équipement ne correspond à ces filtres.</p>
   }
 
-  @for (group of store.byRoom(); track group.room) {
-    <section class="mb-8">
+  @for (group of groups(); track group.room) {
+    <section class="mb-8 max-sm:mb-6">
       <h2 class="room-title mb-3 text-base font-semibold tracking-wider uppercase text-muted">
         {{ group.room }}
       </h2>
 
-      <div class="grid gap-4 grid-cols-[repeat(auto-fill,minmax(17rem,1fr))]">
+      <div class="grid gap-4 grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] max-sm:gap-3">
         @for (device of group.devices; track device.id) {
           <a
             [routerLink]="['/devices', device.id]"
             [style.box-shadow]="litGlow(device)"
             [class.lit]="powerState(device) === true"
-            class="block rounded-xl text-inherit no-underline transition hover:-translate-y-0.5
+            class="block h-full rounded-xl text-inherit no-underline transition hover:-translate-y-0.5
                    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <p-card>
+            <p-card class="block h-full" styleClass="h-full max-sm:[&_.p-card-body]:p-4">
               <ng-template #header>
-                <div class="flex items-center justify-between gap-2 px-5 pt-4">
-                  <span class="inline-flex min-w-0 items-center gap-2 font-semibold">
-                    <i
-                      [class]="kindIcon(device.kind)"
-                      class="power-icon shrink-0"
-                      [class.text-primary]="powerState(device) === null"
-                      [class.text-muted]="powerState(device) === false"
-                      [style.color]="litColor(device)"
-                    ></i>
-                    <span class="truncate">{{ device.name }}</span>
-                  </span>
-                  <span class="inline-flex shrink-0 gap-1">
-                    <p-tag
-                      class="source-tag"
-                      [value]="sourceLabel(device.source)"
-                      [severity]="sourceSeverity(device.source)"
-                    />
-                    @if (!device.reachable) {
-                      <p-tag value="Hors ligne" severity="danger" />
-                    }
-                  </span>
+                <div class="flex min-w-0 items-center gap-2 px-5 pt-4 font-semibold max-sm:px-4">
+                  <i
+                    [class]="kindIcon(device.kind)"
+                    class="power-icon shrink-0"
+                    [class.text-primary]="powerState(device) === null"
+                    [class.text-muted]="powerState(device) === false"
+                    [style.color]="litColor(device)"
+                  ></i>
+                  <span class="truncate">{{ device.name }}</span>
                 </div>
               </ng-template>
 
-              <p class="mb-3 text-[0.8125rem] text-muted">{{ kindLabel(device.kind) }}</p>
+              <!-- Type et tags sur une ligne à part : le nom garde toute la
+                   largeur de la carte. -->
+              <div class="mb-3 flex flex-wrap items-center gap-1.5 text-[0.8125rem] text-muted">
+                <span class="mr-1">{{ kindLabel(device.kind) }}</span>
+                <p-tag
+                  class="source-tag"
+                  [value]="sourceLabel(device.source)"
+                  [severity]="sourceSeverity(device.source)"
+                  styleClass="text-xs"
+                />
+                @if (!device.reachable) {
+                  <p-tag value="Hors ligne" severity="danger" styleClass="text-xs" />
+                }
+              </div>
 
               @if (readings(device).length > 0) {
                 <dl class="grid grid-cols-2 gap-x-4 gap-y-3">
                   @for (reading of readings(device); track reading.label) {
                     <div class="reading min-w-0">
                       <dt class="truncate text-xs text-muted">{{ reading.label }}</dt>
-                      <dd class="mt-0.5 text-lg tabular-nums">{{ reading.value }}</dd>
+                      <dd class="mt-0.5 inline-flex items-center gap-2 text-lg tabular-nums">
+                        @if (reading.metric === 'color') {
+                          <span
+                            class="swatch inline-block size-4 rounded-full border border-divider"
+                            [style.background-color]="reading.value"
+                          ></span>
+                        }
+                        {{ reading.value }}
+                      </dd>
                     </div>
                   }
                 </dl>

@@ -1,4 +1,6 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localeFr from '@angular/common/locales/fr';
+import { ApplicationConfig, LOCALE_ID, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withFetch } from '@angular/common/http';
 import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
@@ -8,9 +10,13 @@ import Aura from '@openng/optimus-ui-themes/aura';
 import { routes } from './app.routes';
 import { provideApi } from './api';
 
+// Noms des jours et des mois en français pour DatePipe (« ven. 25 sept. »).
+registerLocaleData(localeFr);
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    { provide: LOCALE_ID, useValue: 'fr-FR' },
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withFetch()),
     // cssLayer place les styles des composants Optimus dans une couche nommée,

@@ -9,7 +9,9 @@
  */
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { EnvironmentProviders, Provider } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localeFr from '@angular/common/locales/fr';
+import { EnvironmentProviders, LOCALE_ID, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
@@ -17,10 +19,14 @@ import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 import { Device, SceneView, provideApi } from '../api';
 import { routes } from '../app.routes';
 
+registerLocaleData(localeFr);
+
 /** Providers nécessaires à tout composant de l'application. */
 export function testProviders(): (Provider | EnvironmentProviders)[] {
   return [
     provideRouter(routes),
+    // Même locale que l'application : les dates se lisent en français.
+    { provide: LOCALE_ID, useValue: 'fr-FR' },
     provideHttpClient(),
     provideHttpClientTesting(),
     provideApi(''),

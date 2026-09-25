@@ -1,10 +1,11 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterOutlet } from '@angular/router';
+import { MenuItem } from '@openng/optimus-ui/api';
 import { ButtonModule } from '@openng/optimus-ui/button';
 import { ConfirmDialogModule } from '@openng/optimus-ui/confirmdialog';
 import { TagModule } from '@openng/optimus-ui/tag';
 import { ToastModule } from '@openng/optimus-ui/toast';
-import { ToolbarModule } from '@openng/optimus-ui/toolbar';
+import { MenubarModule } from '@openng/optimus-ui/menubar';
 
 import { DevicesStore } from './core/devices.store';
 
@@ -13,8 +14,7 @@ import { DevicesStore } from './core/devices.store';
   imports: [
     RouterOutlet,
     RouterLink,
-    RouterLinkActive,
-    ToolbarModule,
+    MenubarModule,
     ButtonModule,
     ConfirmDialogModule,
     TagModule,
@@ -25,6 +25,17 @@ import { DevicesStore } from './core/devices.store';
 })
 export class App {
   protected readonly store = inject(DevicesStore);
+
+  /**
+   * Navigation. Sur un écran étroit, le menubar la replie derrière un bouton
+   * hamburger ; un lien choisi referme le menu.
+   */
+  protected readonly menu: MenuItem[] = [
+    { label: 'Tableau de bord', icon: 'pi pi-th-large', routerLink: '/dashboard' },
+    { label: 'Équipements', icon: 'pi pi-list', routerLink: '/devices' },
+    { label: 'Scènes', icon: 'pi pi-play-circle', routerLink: '/scenes' },
+    { label: 'Historique', icon: 'pi pi-history', routerLink: '/history' },
+  ];
 
   /** Résumé de l'état du service, affiché en permanence dans la barre. */
   protected readonly healthTag = computed(() => {

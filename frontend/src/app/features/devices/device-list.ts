@@ -54,12 +54,12 @@ export class DeviceList {
   protected readonly roomFilter = signal<string | null>(null);
 
   protected readonly sourceOptions = [
-    { label: 'Toutes les sources', value: null },
+    { label: 'Toutes sources', value: null },
     ...SOURCE_IDS.map((id) => ({ label: sourceLabel(id), value: id })),
   ];
 
   protected readonly roomOptions = computed(() => [
-    { label: 'Toutes les pièces', value: null },
+    { label: 'Toutes pièces', value: null },
     ...this.store.rooms().map((room) => ({ label: room, value: room })),
   ]);
 

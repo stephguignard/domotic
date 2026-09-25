@@ -45,3 +45,21 @@ const canvasStub = {
 
 HTMLCanvasElement.prototype.getContext = (() =>
   canvasStub) as unknown as HTMLCanvasElement['getContext'];
+
+/**
+ * jsdom n'implémente pas non plus matchMedia, dont le menubar se sert pour
+ * replier la navigation sur un écran étroit. Le stub répond « écran large » :
+ * les specs voient la barre dépliée.
+ */
+if (!window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
