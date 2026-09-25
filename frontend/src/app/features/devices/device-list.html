@@ -1,9 +1,9 @@
-<p-card>
+<p-card styleClass="max-sm:[&_.p-card-body]:px-2 max-sm:[&_.p-card-body]:py-3">
   <ng-template #header>
-    <div class="flex flex-wrap items-center justify-between gap-4 px-5 pt-5">
+    <div class="flex flex-wrap items-center justify-between gap-4 px-5 pt-5 max-sm:gap-3 max-sm:px-3 max-sm:pt-4">
       <h1 class="text-xl font-semibold">Équipements</h1>
 
-      <div class="flex flex-wrap gap-3">
+      <div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:gap-3">
         <p-select
           [options]="sourceOptions"
           [ngModel]="sourceFilter()"
@@ -11,7 +11,7 @@
           optionLabel="label"
           optionValue="value"
           placeholder="Source"
-          styleClass="min-w-48"
+          styleClass="w-full sm:min-w-48"
         />
         <p-select
           [options]="roomOptions()"
@@ -20,7 +20,7 @@
           optionLabel="label"
           optionValue="value"
           placeholder="Pièce"
-          styleClass="min-w-48"
+          styleClass="w-full sm:min-w-48"
         />
       </div>
     </div>
@@ -36,15 +36,18 @@
     dataKey="id"
     currentPageReportTemplate="{first} à {last} sur {totalRecords}"
     [showCurrentPageReport]="true"
+    styleClass="max-sm:[&_td]:px-2 max-sm:[&_th]:px-2"
   >
     <ng-template #header>
       <tr>
         <th>Nom</th>
-        <th>Type</th>
-        <th>Pièce</th>
-        <th>Source</th>
+        <!-- Colonnes secondaires masquées sur téléphone : le type et la pièce
+             passent sous le nom, la source et la date restent dans le détail. -->
+        <th class="max-sm:hidden">Type</th>
+        <th class="max-sm:hidden">Pièce</th>
+        <th class="max-md:hidden">Source</th>
         <th>État</th>
-        <th>Mise à jour</th>
+        <th class="max-md:hidden">Mise à jour</th>
         <th class="w-px whitespace-nowrap">Actions</th>
       </tr>
     </ng-template>
@@ -60,22 +63,27 @@
               [class.text-muted]="powerState(device) === false"
               [style.color]="litColor(device)"
             ></i>
-            <span>{{ device.name }}</span>
+            <span>
+              {{ device.name }}
+              <span class="device-subtitle block text-xs font-normal text-muted sm:hidden">
+                {{ kindLabel(device.kind) }} · {{ device.room || 'Sans pièce' }}
+              </span>
+            </span>
           </span>
         </td>
-        <td>{{ kindLabel(device.kind) }}</td>
-        <td>{{ device.room || '—' }}</td>
-        <td>
+        <td class="max-sm:hidden">{{ kindLabel(device.kind) }}</td>
+        <td class="max-sm:hidden">{{ device.room || '—' }}</td>
+        <td class="max-md:hidden">
           <p-tag [value]="sourceLabel(device.source)" [severity]="sourceSeverity(device.source)" />
         </td>
         <td>
           @if (device.reachable) {
-            <p-tag value="En ligne" severity="success" />
+            <p-tag value="En ligne" severity="success" styleClass="whitespace-nowrap max-sm:text-xs" />
           } @else {
-            <p-tag value="Hors ligne" severity="danger" />
+            <p-tag value="Hors ligne" severity="danger" styleClass="whitespace-nowrap max-sm:text-xs" />
           }
         </td>
-        <td class="whitespace-nowrap tabular-nums text-muted">
+        <td class="whitespace-nowrap tabular-nums text-muted max-md:hidden">
           {{ device.updated_at | date: 'dd/MM HH:mm' }}
         </td>
         <td class="w-px whitespace-nowrap">

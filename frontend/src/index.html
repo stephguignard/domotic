@@ -4,8 +4,14 @@
   <meta charset="utf-8">
   <title>Domotic</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Pilotage des équipements Netatmo et Somfy TaHoma">
+  <!-- Zoom bloqué : l'interface se pilote comme une application, et un
+       double-tap sur un bouton de commande ne doit pas agrandir la page.
+       viewport-fit=cover laisse la barre s'étendre sous l'encoche. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Pilotage des équipements Netatmo, Somfy TaHoma, Philips Hue et Shelly">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Domotic">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>

@@ -57,6 +57,14 @@
   color-scheme: light dark;
 }
 
+html {
+  /* Pas de zoom au double-tap (iOS l'autorise malgré user-scalable=no), et
+   * pas de grossissement automatique du texte au passage en paysage. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html,
 body {
   margin: 0;
