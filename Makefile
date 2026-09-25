@@ -20,6 +20,10 @@ IMAGE   ?= domotic:latest
 NAS_HOST ?= nas
 NAS_DIR  ?= /volume1/docker/domotic
 
+# Sur DSM 7.1, le paquet Docker n'ajoute pas ses binaires au PATH d'une session
+# SSH : ils s'appellent par leur chemin complet.
+NAS_BIN ?= /var/packages/Docker/target/usr/bin
+
 # Go est installé dans ~/.local/go, hors du PATH par défaut.
 export PATH := $(HOME)/.local/go/bin:$(PATH)
 
@@ -133,9 +137,15 @@ docker: ## Construire l'image Docker
 .PHONY: deploy
 deploy: docker ## Transférer l'image sur le NAS et redémarrer la stack
 	@echo "Transfert de l'image vers $(NAS_HOST)…"
-	docker save $(IMAGE) | gzip | ssh $(NAS_HOST) 'gunzip | sudo docker load'
-	ssh $(NAS_HOST) 'cd $(NAS_DIR) && sudo docker-compose up -d'
-	@echo "Déployé. Logs : ssh $(NAS_HOST) 'cd $(NAS_DIR) && sudo docker-compose logs -f'"
+	# Par ssh plutôt que scp : le NAS n'expose pas SFTP, dont scp dépend. Le
+	# fichier transite avant le chargement pour que la commande suivante ait un
+	# terminal libre, où sudo peut demander le mot de passe.
+	docker save $(IMAGE) | gzip | ssh $(NAS_HOST) 'cat > $(NAS_DIR)/domotic-image.tar.gz'
+	ssh -t $(NAS_HOST) 'cd $(NAS_DIR) && \
+		sudo $(NAS_BIN)/docker load -i domotic-image.tar.gz && rm domotic-image.tar.gz && \
+		sudo chown -R 65532:65532 data && \
+		sudo $(NAS_BIN)/docker-compose up -d'
+	@echo "Déployé. Logs : ssh -t $(NAS_HOST) 'cd $(NAS_DIR) && sudo $(NAS_BIN)/docker-compose logs -f'"
 
 .PHONY: clean
 clean: ## Supprimer les artefacts de build
